@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/assembla/cony"
 	"github.com/robfig/cron"
 )
 
@@ -16,7 +16,7 @@ type WorkerPool struct {
 	workerPoolID string
 	concurrency  uint
 	namespace    string // eg, "myapp-work"
-	pool         *redis.Pool
+	cli          *cony.Client
 
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
@@ -35,9 +35,9 @@ type BackoffCalculator func(job *Job) int64
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
-	if pool == nil {
-		panic("NewWorkerPool needs a non-nil *redis.Pool")
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *cony.Client) *WorkerPool {
+	if cli == nil {
+		panic("NewWorkerPool needs a non-nil *cony.Client")
 	}
 
 	ctxType := reflect.TypeOf(ctx)
@@ -46,13 +46,13 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 		workerPoolID: makeIdentifier(),
 		concurrency:  concurrency,
 		namespace:    namespace,
-		pool:         pool,
+		cli:          cli,
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes)
 		wp.workers = append(wp.workers, w)
 	}
 

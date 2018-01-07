@@ -15,7 +15,6 @@ type worker struct {
 	workerID    string
 	poolID      string
 	namespace   string
-	pool        *redis.Pool
 	jobTypes    map[string]*jobType
 	middleware  []*middlewareHandler
 	contextType reflect.Type
@@ -29,14 +28,13 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, poolID string, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
 
 	w := &worker{
 		workerID:    workerID,
 		poolID:      poolID,
 		namespace:   namespace,
-		pool:        pool,
 		contextType: contextType,
 
 		stopChan:         make(chan struct{}),
@@ -117,11 +115,9 @@ func (w *worker) loop() {
 func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
-	conn := w.pool.Get()
-	defer conn.Close()
 
 	// TODO 此方法需要重构
-	values, err := redis.Values(w.redisFetchScript.Do(conn))
+	values, err := redis.Values(w.redisFetchScript.Do(nil))
 	if err == redis.ErrNil {
 		return nil, nil
 	} else if err != nil {
@@ -202,9 +198,6 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 		logError("worker.add_to_retry", err)
 		return
 	}
-
-	conn := w.pool.Get()
-	defer conn.Close()
 
 	var backoff BackoffCalculator
 

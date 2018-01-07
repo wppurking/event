@@ -8,6 +8,12 @@
   version = "v0.4.2"
 
 [[projects]]
+  name = "github.com/assembla/cony"
+  packages = ["."]
+  revision = "dd62697b0adb9adfda8589520cb85f4cbc2361f1"
+  version = "v0.3.2"
+
+[[projects]]
   name = "github.com/benmanns/goworker"
   packages = ["."]
   revision = "36e605a9e15a8a1d99ddacc079dd178758aa1db5"
@@ -92,6 +98,12 @@
   version = "v1"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/streadway/amqp"
+  packages = ["."]
+  revision = "ff34ec9cc65c2a23db5126d962c431018f65af59"
+
+[[projects]]
   name = "github.com/stretchr/testify"
   packages = ["assert"]
   revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
@@ -112,6 +124,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d70cf99674e3e3387aa22a7a12d26b22f8f3d6711c3afcb16a223bea8b2bca73"
+  inputs-digest = "55bf9abb71677b01f96ccd2b3034e0f3e27ec3f30727f92cc14879235e029e37"
   solver-name = "gps-cdcl"
   solver-version = 1
