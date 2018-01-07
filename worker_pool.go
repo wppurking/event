@@ -27,45 +27,11 @@ type WorkerPool struct {
 	//heartbeater      *workerPoolHeartbeater
 }
 
-type jobType struct {
-	Name string
-	JobOptions
-
-	IsGeneric      bool
-	GenericHandler GenericHandler
-	DynamicHandler reflect.Value
-}
-
 // You may provide your own backoff function for retrying failed jobs or use the builtin one.
 // Returns the number of seconds to wait until the next attempt.
 //
 // The builtin backoff calculator provides an exponentially increasing wait function.
 type BackoffCalculator func(job *Job) int64
-
-// JobOptions can be passed to JobWithOptions.
-type JobOptions struct {
-	RoutingKey     string            // 给 RabbitMQ 使用的 routing_key, 如果存在则绑定, 如果不存在则只 consume queue
-	Priority       uint              // Priority from 1 to 10000
-	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
-	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
-	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
-}
-
-// GenericHandler is a job handler without any custom context.
-type GenericHandler func(*Job) error
-
-// GenericMiddlewareHandler is a middleware without any custom context.
-type GenericMiddlewareHandler func(*Job, NextMiddlewareFunc) error
-
-// NextMiddlewareFunc is a function type (whose instances are named 'next') that you call to advance to the next middleware.
-type NextMiddlewareFunc func() error
-
-type middlewareHandler struct {
-	IsGeneric                bool
-	DynamicMiddleware        reflect.Value
-	GenericMiddlewareHandler GenericMiddlewareHandler
-}
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
