@@ -1,13 +1,14 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
-	"github.com/robfig/cron"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
 	"sync"
-	"fmt"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/robfig/cron"
 )
 
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
@@ -17,12 +18,12 @@ type WorkerPool struct {
 	namespace    string // eg, "myapp-work"
 	pool         *redis.Pool
 
-	contextType  reflect.Type
-	jobTypes     map[string]*jobType
-	middleware   []*middlewareHandler
-	started      bool
+	contextType reflect.Type
+	jobTypes    map[string]*jobType
+	middleware  []*middlewareHandler
+	started     bool
 
-	workers          []*worker
+	workers []*worker
 	//heartbeater      *workerPoolHeartbeater
 }
 
@@ -43,6 +44,7 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
+	RoutingKey     string            // 给 RabbitMQ 使用的 routing_key, 如果存在则绑定, 如果不存在则只 consume queue
 	Priority       uint              // Priority from 1 to 10000
 	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
 	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
