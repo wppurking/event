@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"fmt"
 )
 
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
@@ -20,14 +21,9 @@ type WorkerPool struct {
 	jobTypes     map[string]*jobType
 	middleware   []*middlewareHandler
 	started      bool
-	periodicJobs []*periodicJob
 
 	workers          []*worker
-	heartbeater      *workerPoolHeartbeater
-	retrier          *requeuer
-	scheduler        *requeuer
-	deadPoolReaper   *deadPoolReaper
-	periodicEnqueuer *periodicEnqueuer
+	//heartbeater      *workerPoolHeartbeater
 }
 
 type jobType struct {
@@ -163,8 +159,8 @@ func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPo
 	if err != nil {
 		panic(err)
 	}
-
-	wp.periodicJobs = append(wp.periodicJobs, &periodicJob{jobName: jobName, spec: spec, schedule: schedule})
+	fmt.Println(schedule)
+	// TODO: Preiodically 的任务需要额外实现
 
 	return wp
 }
@@ -184,11 +180,9 @@ func (wp *WorkerPool) Start() {
 		go w.start()
 	}
 
-	wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
-	wp.heartbeater.start()
+	//wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
+	//wp.heartbeater.start()
 	wp.startRequeuers()
-	wp.periodicEnqueuer = newPeriodicEnqueuer(wp.namespace, wp.pool, wp.periodicJobs)
-	wp.periodicEnqueuer.start()
 }
 
 // Stop stops the workers and associated processes.
@@ -207,11 +201,7 @@ func (wp *WorkerPool) Stop() {
 		}(w)
 	}
 	wg.Wait()
-	wp.heartbeater.stop()
-	wp.retrier.stop()
-	wp.scheduler.stop()
-	wp.deadPoolReaper.stop()
-	wp.periodicEnqueuer.stop()
+	//wp.heartbeater.stop()
 }
 
 // Drain drains all jobs in the queue before returning. Note that if jobs are added faster than we can process them, this function wouldn't return.
@@ -232,12 +222,13 @@ func (wp *WorkerPool) startRequeuers() {
 	for k := range wp.jobTypes {
 		jobNames = append(jobNames, k)
 	}
-	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
-	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
-	wp.retrier.start()
-	wp.scheduler.start()
-	wp.deadPoolReaper.start()
+	// TODO: 这个是干啥?
+	//wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
+	//wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
+	//wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
+	//wp.retrier.start()
+	//wp.scheduler.start()
+	//wp.deadPoolReaper.start()
 }
 
 func (wp *WorkerPool) workerIDs() []string {
@@ -253,33 +244,14 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 	if len(wp.jobTypes) == 0 {
 		return
 	}
-
-	conn := wp.pool.Get()
-	defer conn.Close()
-	key := redisKeyKnownJobs(wp.namespace)
-	jobNames := make([]interface{}, 0, len(wp.jobTypes)+1)
-	jobNames = append(jobNames, key)
-	for k := range wp.jobTypes {
-		jobNames = append(jobNames, k)
-	}
-
-	if _, err := conn.Do("SADD", jobNames...); err != nil {
-		logError("write_known_jobs", err)
-	}
+	// TODO 注册已知的任务, 但对 rabbitmq 没有必要
 }
 
 func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 	if len(wp.jobTypes) == 0 {
 		return
 	}
-
-	conn := wp.pool.Get()
-	defer conn.Close()
-	for jobName, jobType := range wp.jobTypes {
-		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
-			logError("write_concurrency_controls_max_concurrency", err)
-		}
-	}
+	// TODO: 限制最大的并发
 }
 
 // validateContextType will panic if context is invalid

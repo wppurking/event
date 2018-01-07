@@ -21,8 +21,6 @@ type worker struct {
 	contextType reflect.Type
 
 	redisFetchScript *redis.Script
-	sampler          prioritySampler
-	*observer
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
@@ -33,7 +31,6 @@ type worker struct {
 
 func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
-	ob := newObserver(namespace, pool, workerID)
 
 	w := &worker{
 		workerID:    workerID,
@@ -41,8 +38,6 @@ func newWorker(namespace string, poolID string, pool *redis.Pool, contextType re
 		namespace:   namespace,
 		pool:        pool,
 		contextType: contextType,
-
-		observer: ob,
 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
@@ -59,37 +54,21 @@ func newWorker(namespace string, poolID string, pool *redis.Pool, contextType re
 // note: can't be called while the thing is started
 func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*jobType) {
 	w.middleware = middleware
-	sampler := prioritySampler{}
-	for _, jt := range jobTypes {
-		sampler.add(jt.Priority,
-			redisKeyJobs(w.namespace, jt.Name),
-			redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name),
-			redisKeyJobsPaused(w.namespace, jt.Name),
-			redisKeyJobsLock(w.namespace, jt.Name),
-			redisKeyJobsLockInfo(w.namespace, jt.Name),
-			redisKeyJobsConcurrency(w.namespace, jt.Name))
-	}
-	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(len(jobTypes)*fetchKeysPerJobType, redisLuaFetchJob)
 }
 
 func (w *worker) start() {
 	go w.loop()
-	go w.observer.start()
 }
 
 func (w *worker) stop() {
 	w.stopChan <- struct{}{}
 	<-w.doneStoppingChan
-	w.observer.drain()
-	w.observer.stop()
 }
 
 func (w *worker) drain() {
 	w.drainChan <- struct{}{}
 	<-w.doneDrainingChan
-	w.observer.drain()
 }
 
 var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
@@ -138,18 +117,11 @@ func (w *worker) loop() {
 func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
-	w.sampler.sample()
-	numKeys := len(w.sampler.samples) * fetchKeysPerJobType
-	var scriptArgs = make([]interface{}, 0, numKeys+1)
-
-	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused, s.redisJobsLock, s.redisJobsLockInfo, s.redisJobsMaxConcurrency) // KEYS[1-6 * N]
-	}
-	scriptArgs = append(scriptArgs, w.poolID) // ARGV[1]
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	values, err := redis.Values(w.redisFetchScript.Do(conn, scriptArgs...))
+	// TODO 此方法需要重构
+	values, err := redis.Values(w.redisFetchScript.Do(conn))
 	if err == redis.ErrNil {
 		return nil, nil
 	} else if err != nil {
@@ -188,10 +160,8 @@ func (w *worker) processJob(job *Job) {
 		w.deleteUniqueJob(job)
 	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
-		w.observeStarted(job.Name, job.ID, job.Args)
-		job.observer = w.observer // for Checkin
+		// TODO 需要增加任务执行的 mertic
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
-		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
@@ -208,31 +178,11 @@ func (w *worker) processJob(job *Job) {
 }
 
 func (w *worker) deleteUniqueJob(job *Job) {
-	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Args)
-	if err != nil {
-		logError("worker.delete_unique_job.key", err)
-	}
-	conn := w.pool.Get()
-	defer conn.Close()
-
-	_, err = conn.Do("DEL", uniqueKey)
-	if err != nil {
-		logError("worker.delete_unique_job.del", err)
-	}
+	// TODO 这个暂时无法实现
 }
 
 func (w *worker) removeJobFromInProgress(job *Job) {
-	conn := w.pool.Get()
-	defer conn.Close()
-
-	// remove job from in progress and decr the lock in one transaction
-	conn.Send("MULTI")
-	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
-	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
-	if _, err := conn.Do("EXEC"); err != nil {
-		logError("worker.remove_job_from_in_progress.lrem", err)
-	}
+	// TODO: 删除任务的执行状态
 }
 
 func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
@@ -267,15 +217,8 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	if backoff == nil {
 		backoff = defaultBackoffCalculator
 	}
-
-	conn.Send("MULTI")
-	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
-	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
-	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job), rawJSON)
-	if _, err = conn.Do("EXEC"); err != nil {
-		logError("worker.add_to_retry.exec", err)
-	}
+	fmt.Println(rawJSON)
+	// TODO: 需要进行 backoff 的重试机制
 }
 
 func (w *worker) addToDead(job *Job, runErr error) {
@@ -285,24 +228,8 @@ func (w *worker) addToDead(job *Job, runErr error) {
 		logError("worker.add_to_dead.serialize", err)
 		return
 	}
-
-	conn := w.pool.Get()
-	defer conn.Close()
-
-	// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
-	// The max # of jobs seems really horrible. Seems like operations should be on top of it.
-	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
-	// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
-
-	conn.Send("MULTI")
-	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
-	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
-	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
-	_, err = conn.Do("EXEC")
-	if err != nil {
-		logError("worker.add_to_dead.exec", err)
-	}
+	fmt.Println(rawJSON)
+	// TODO: 需要将队列添加到死队列中
 }
 
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion

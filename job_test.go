@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+type TestContext struct{}
+
 func TestJobArgumentExtraction(t *testing.T) {
 	j := Job{}
 	j.setArg("str1", "bar")
