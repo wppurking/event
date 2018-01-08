@@ -1,6 +1,7 @@
 package work
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -34,21 +35,33 @@ func NewEnqueuer(namespace string, cli *cony.Client) *Enqueuer {
 		cli:       cli,
 		knownJobs: make(map[string]int64),
 	}
-	e.defaultExc = cony.Exchange{Name: withNS(e.Namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
-	e.scheduleExc = cony.Exchange{Name: withNS(e.Namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
-	e.pub = cony.NewPublisher(e.defaultExc.Name, "")
-	e.schePub = cony.NewPublisher(e.scheduleExc.Name, "")
+	e.newDeclears()
 	go e.loop()
 	return e
 }
 
-// 开始保护 rabbitmq 的连接
-func (e *Enqueuer) loop() {
+func (e *Enqueuer) newDeclears() {
+	e.defaultExc = cony.Exchange{Name: withNS(e.Namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
+	e.scheduleExc = cony.Exchange{Name: withNS(e.Namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
+	e.pub = cony.NewPublisher(e.defaultExc.Name, "")
+	e.schePub = cony.NewPublisher(e.scheduleExc.Name, "")
+
+	e.cli.Publish(e.pub)
+	e.cli.Publish(e.schePub)
 	e.cli.Declare([]cony.Declaration{
 		cony.DeclareExchange(e.defaultExc),
 		cony.DeclareExchange(e.scheduleExc),
 	})
+}
+
+// 开始保护 rabbitmq 的连接
+func (e *Enqueuer) loop() {
 	for e.cli.Loop() {
+		select {
+		case err := <-e.cli.Errors():
+			fmt.Println(err)
+		}
+
 	}
 }
 

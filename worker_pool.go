@@ -61,7 +61,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 	// dead queue
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes, wp.consumers)
 		wp.workers = append(wp.workers, w)
 	}
 
@@ -87,7 +87,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	wp.middleware = append(wp.middleware, mw)
 
 	for _, w := range wp.workers {
-		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes)
+		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes, wp.consumers)
 	}
 
 	return wp
@@ -128,7 +128,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	wp.consumers[name] = cn
 
 	for _, w := range wp.workers {
-		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes)
+		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes, wp.consumers)
 	}
 
 	return wp

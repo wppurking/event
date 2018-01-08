@@ -29,7 +29,7 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, poolID string, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType, consumers map[string]*consumer) *worker {
 	workerID := makeIdentifier()
 
 	w := &worker{
@@ -45,15 +45,16 @@ func newWorker(namespace string, poolID string, contextType reflect.Type, middle
 		doneDrainingChan: make(chan struct{}),
 	}
 
-	w.updateMiddlewareAndJobTypes(middleware, jobTypes)
+	w.updateMiddlewareAndJobTypes(middleware, jobTypes, consumers)
 
 	return w
 }
 
 // note: can't be called while the thing is started
-func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*jobType) {
+func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*jobType, consumers map[string]*consumer) {
 	w.middleware = middleware
 	w.jobTypes = jobTypes
+	w.consumers = consumers
 }
 
 func (w *worker) start() {
@@ -119,12 +120,11 @@ func (w *worker) fetchJob() (*Job, error) {
 
 	// TODO: 控制任务的并发
 	for _, c := range w.consumers {
-		j := c.Peak()
-		if j != nil {
-			job, err := newJob(j.Body, j)
-			if err != nil {
-				return nil, err
-			}
+		job, err := c.Peek()
+		if err != nil {
+			return nil, err
+		}
+		if job != nil {
 			return job, nil
 		}
 	}

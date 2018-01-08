@@ -2,7 +2,6 @@ package work
 
 import (
 	"github.com/assembla/cony"
-	"github.com/streadway/amqp"
 )
 
 type consumer struct {
@@ -36,12 +35,18 @@ func (c *consumer) stop(cli *cony.Client) {
 	c.c.Cancel()
 }
 
-// Peak 一个任务
-func (c *consumer) Peak() *amqp.Delivery {
+// Peek 一个任务
+func (c *consumer) Peek() (*Job, error) {
 	select {
 	case j := <-c.c.Deliveries():
-		return &j
+		return newJob(j.Body, &j)
 	default:
-		return nil
+		return nil, nil
 	}
+}
+
+// Pop 阻塞的获取一个任务
+func (c *consumer) Pop() (*Job, error) {
+	j := <-c.c.Deliveries()
+	return newJob(j.Body, &j)
 }

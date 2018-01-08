@@ -1,24 +1,12 @@
 package work
 
-import (
-	"fmt"
-	"strconv"
-	"sync/atomic"
-	"testing"
-	"time"
-
-	"github.com/garyburd/redigo/redis"
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 func TestWorkerBasics(t *testing.T) {
-	pool := newTestPool(":6379")
+	cli := cony.NewClient()
 	ns := "work"
 	job1 := "job1"
 	job2 := "job2"
 	job3 := "job3"
-
-	cleanKeyspace(ns, pool)
 
 	var arg1 float64
 	var arg2 float64
@@ -53,7 +41,7 @@ func TestWorkerBasics(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, pool)
+	enqueuer := NewEnqueuer(ns, cli)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue(job2, Q{"a": 2})
@@ -61,7 +49,7 @@ func TestWorkerBasics(t *testing.T) {
 	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", tstCtxType, nil, jobTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -625,3 +613,4 @@ func TestWorkerPoolStop(t *testing.T) {
 		t.Errorf("Expected that jobs queue was not completely emptied.")
 	}
 }
+*/
