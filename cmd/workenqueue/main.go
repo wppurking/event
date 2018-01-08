@@ -30,6 +30,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	en := work.NewEnqueuer(*namespace, cony.NewClient(cony.URL(*rabbitMqURL)))
+	en := work.NewEnqueuer(*namespace, cony.URL(*rabbitMqURL))
 	en.Enqueue(*jobName, args)
 }

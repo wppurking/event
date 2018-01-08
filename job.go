@@ -1,11 +1,11 @@
 package work
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
 
+	"github.com/json-iterator/go"
 	"github.com/streadway/amqp"
 )
 
@@ -23,16 +23,12 @@ type Job struct {
 	LastErr  string `json:"err,omitempty"`
 	FailedAt int64  `json:"failed_at,omitempty"`
 
-	rawJSON      []byte
-	dequeuedFrom []byte
-	inProgQueue  []byte
-	argError     error
-	msg          *amqp.Delivery
-	// ack 的行动
-	ack func(ev ackEvent)
-
-	// publish 的时候没有, 但是作为 msg 进入的时候一定需要存在
-	//observer     *observer
+	rawJSON      []byte            `json:"-"`
+	dequeuedFrom []byte            `json:"-"`
+	inProgQueue  []byte            `json:"-"`
+	argError     error             `json:"-"`
+	msg          *amqp.Delivery    `json:"-"`
+	ack          func(ev ackEvent) `json:"-"` // ack 的行动
 }
 
 // Q is a shortcut to easily specify arguments for jobs when enqueueing them.
@@ -41,7 +37,7 @@ type Q map[string]interface{}
 
 func newJob(rawJSON []byte, msg *amqp.Delivery, ack func(ev ackEvent)) (*Job, error) {
 	var job Job
-	err := json.Unmarshal(rawJSON, &job)
+	err := jsoniter.Unmarshal(rawJSON, &job)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +72,7 @@ func (j *Job) Reject() bool {
 }
 
 func (j *Job) serialize() ([]byte, error) {
-	return json.Marshal(j)
+	return jsoniter.Marshal(j)
 }
 
 // setArg sets a single named argument on the job.

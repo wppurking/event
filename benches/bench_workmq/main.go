@@ -30,7 +30,7 @@ func main() {
 	numJobs := 10
 	jobNames := []string{}
 	rabbitMqURL := "amqp://guest:guest@localhost:5672/ajd"
-	enq = work.NewEnqueuer(namespace, cony.NewClient(cony.URL(rabbitMqURL)))
+	enq = work.NewEnqueuer(namespace, cony.URL(rabbitMqURL))
 
 	for i := 0; i < numJobs; i++ {
 		jobNames = append(jobNames, fmt.Sprintf("job%d", i))
@@ -41,7 +41,7 @@ func main() {
 	job.Complete(health.Success)
 
 	workerPool := work.NewWorkerPool(context{}, 20,
-		namespace, cony.NewClient(cony.URL(rabbitMqURL)), enq)
+		namespace, enq, cony.URL(rabbitMqURL))
 	for _, jobName := range jobNames {
 		workerPool.Job(jobName, epsilonHandler)
 	}
