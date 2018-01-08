@@ -56,6 +56,10 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 	wp.defaultExc = cony.Exchange{Name: wp.withNS("work"), AutoDelete: false, Durable: true, Kind: "topic"}
 	wp.scheduleExc = cony.Exchange{Name: wp.withNS("work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 
+	// TODO: 还需要添加
+	// retry queue
+	// dead queue
+
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes)
 		wp.workers = append(wp.workers, w)

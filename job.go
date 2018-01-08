@@ -184,3 +184,21 @@ func typecastError(jsonType, key string, v interface{}) error {
 	actualType := reflect.TypeOf(v)
 	return fmt.Errorf("looking for a %s in job.Arg[%s] but value wasn't right type: %v(%v)", jsonType, key, actualType, v)
 }
+
+// RetryJob represents a job in the retry queue.
+type RetryJob struct {
+	RetryAt int64 `json:"retry_at"`
+	*Job
+}
+
+// ScheduledJob represents a job in the scheduled queue.
+type ScheduledJob struct {
+	RunAt int64 `json:"run_at"`
+	*Job
+}
+
+// DeadJob represents a job in the dead queue.
+type DeadJob struct {
+	DiedAt int64 `json:"died_at"`
+	*Job
+}

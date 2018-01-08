@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/assembla/cony"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,9 +73,9 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 }
 
 func TestWorkerPoolStartStop(t *testing.T) {
-	pool := newTestPool(":6379")
+	cli := cony.NewClient()
 	ns := "work"
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, cli)
 	wp.Start()
 	wp.Start()
 	wp.Stop()
@@ -85,9 +85,9 @@ func TestWorkerPoolStartStop(t *testing.T) {
 }
 
 func TestWorkerPoolValidations(t *testing.T) {
-	pool := newTestPool(":6379")
+	cli := cony.NewClient()
 	ns := "work"
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, cli)
 
 	func() {
 		defer func() {
@@ -127,6 +127,7 @@ func (t *TestContext) SleepyJob(job *Job) error {
 	return nil
 }
 
+/*
 func setupTestWorkerPool(pool *redis.Pool, namespace, jobName string, concurrency int, jobOpts JobOptions) *WorkerPool {
 	deleteQueue(pool, namespace, jobName)
 	deleteRetryAndDead(pool, namespace)
@@ -138,3 +139,4 @@ func setupTestWorkerPool(pool *redis.Pool, namespace, jobName string, concurrenc
 	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
 	return wp
 }
+*/
