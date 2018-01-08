@@ -3,18 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
 	"math/rand"
 	"time"
+
+	"github.com/assembla/cony"
+	"github.com/wppurking/work"
 )
 
-var redisHostPort = flag.String("redis", ":6379", "redis hostport")
-var redisNamespace = flag.String("ns", "work", "redis namespace")
+var rabbitMqURL = flag.String("amqp", "amqp://guest:guest@localhost:5672/", "amqp url")
+var namespace = flag.String("ns", "work", "namespace")
 
 func epsilonHandler(job *work.Job) error {
 	fmt.Println("epsilon")
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second)
 
 	if rand.Intn(2) == 0 {
 		return fmt.Errorf("random error")
@@ -28,66 +29,26 @@ func main() {
 	flag.Parse()
 	fmt.Println("Installing some fake data")
 
-	pool := newPool(*redisHostPort)
-	cleanKeyspace(pool, *redisNamespace)
-
 	// Enqueue some jobs:
-	go func() {
-		conn := pool.Get()
-		defer conn.Close()
-		conn.Do("SADD", *redisNamespace+":known_jobs", "foobar")
-	}()
+	go enqueues()
 
-	go func() {
-		for {
-			en := work.NewEnqueuer(*redisNamespace, pool)
-			for i := 0; i < 20; i++ {
-				en.Enqueue("foobar", work.Q{"i": i})
-			}
-
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	wp := work.NewWorkerPool(context{}, 5, *redisNamespace, pool)
+	enq := work.NewEnqueuer(*namespace, cony.NewClient(cony.URL(*rabbitMqURL)))
+	wp := work.NewWorkerPool(context{}, 5, *namespace,
+		cony.NewClient(cony.URL(*rabbitMqURL)), enq)
 	wp.Job("foobar", epsilonHandler)
 	wp.Start()
 
 	select {}
 }
 
-func newPool(addr string) *redis.Pool {
-	return &redis.Pool{
-		MaxActive:   20,
-		MaxIdle:     20,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", addr)
-			if err != nil {
-				return nil, err
-			}
-			return c, nil
-			//return redis.NewLoggingConn(c, log.New(os.Stdout, "", 0), "redis"), err
-		},
-		Wait: true,
-		//TestOnBorrow: func(c redis.Conn, t time.Time) error {
-		//	_, err := c.Do("PING")
-		//	return err
-		//},
-	}
-}
-
-func cleanKeyspace(pool *redis.Pool, namespace string) {
-	conn := pool.Get()
-	defer conn.Close()
-
-	keys, err := redis.Strings(conn.Do("KEYS", namespace+"*"))
-	if err != nil {
-		panic("could not get keys: " + err.Error())
-	}
-	for _, k := range keys {
-		if _, err := conn.Do("DEL", k); err != nil {
-			panic("could not del: " + err.Error())
+func enqueues() {
+	cli := cony.NewClient(cony.URL(*rabbitMqURL))
+	en := work.NewEnqueuer(*namespace, cli)
+	for {
+		for i := 0; i < 40; i++ {
+			en.Enqueue("foobar", work.Q{"i": i})
 		}
+
+		time.Sleep(1 * time.Second)
 	}
 }
