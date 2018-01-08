@@ -56,9 +56,27 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 	wp.defaultExc = cony.Exchange{Name: withNS(wp.namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
 	wp.scheduleExc = cony.Exchange{Name: withNS(wp.namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 
-	// TODO: 还需要添加
 	// retry queue
+	retry := "_retry"
+	wp.consumers[retry] = &consumer{
+		que: &cony.Queue{
+			Name:       withNS(wp.namespace, retry),
+			AutoDelete: false,
+			Durable:    true},
+		exc: wp.defaultExc,
+		jt:  &jobType{Name: "#"},
+	}
+
 	// dead queue
+	dead := "_dead"
+	wp.consumers[dead] = &consumer{
+		que: &cony.Queue{
+			Name:       withNS(wp.namespace, dead),
+			AutoDelete: false,
+			Durable:    true},
+		exc: wp.defaultExc,
+		jt:  &jobType{Name: "#"},
+	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes, wp.consumers)
@@ -119,7 +137,10 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	}
 
 	cn := &consumer{
-		que: &cony.Queue{Name: withNS(wp.namespace, jt.Name)},
+		que: &cony.Queue{
+			Name:       withNS(wp.namespace, jt.Name),
+			AutoDelete: false,
+			Durable:    true},
 		jt:  jt,
 		exc: wp.defaultExc,
 	}
