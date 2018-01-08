@@ -13,10 +13,17 @@ type consumer struct {
 
 // 返回需要进行 Declare 的内容
 func (c *consumer) Declares() (ds []cony.Declaration) {
-	ds = append(ds, cony.DeclareQueue(c.que))
-	ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.jt.Name}))
+	var prefetch int
 
-	prefetch := c.jt.Prefetch
+	ds = append(ds, cony.DeclareQueue(c.que))
+	if c.jt == nil {
+		prefetch = 20
+	} else {
+		prefetch = c.jt.Prefetch
+		if len(c.jt.Name) > 0 {
+			ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.jt.Name}))
+		}
+	}
 	// prefetch 必须大于 0, 不可以无限制
 	if prefetch <= 0 {
 		prefetch = 20
