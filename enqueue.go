@@ -46,12 +46,13 @@ func (e *Enqueuer) newDeclears() {
 	e.pub = cony.NewPublisher(e.defaultExc.Name, "")
 	e.schePub = cony.NewPublisher(e.scheduleExc.Name, "")
 
-	e.cli.Publish(e.pub)
-	e.cli.Publish(e.schePub)
 	e.cli.Declare([]cony.Declaration{
 		cony.DeclareExchange(e.defaultExc),
 		cony.DeclareExchange(e.scheduleExc),
 	})
+	e.cli.Publish(e.pub)
+	e.cli.Publish(e.schePub)
+	builtinQueue(e.Namespace, e.defaultExc, e.cli)
 }
 
 // 开始保护 rabbitmq 的连接

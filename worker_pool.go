@@ -11,6 +11,11 @@ import (
 	"github.com/robfig/cron"
 )
 
+const (
+	retryQueue = "_retry"
+	deadQueue  = "_dead"
+)
+
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
 type WorkerPool struct {
 	workerPoolID string
@@ -52,37 +57,15 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 		cli:          cli,
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
+		consumers:    make(map[string]*consumer),
 	}
 	wp.defaultExc = cony.Exchange{Name: withNS(wp.namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
 	wp.scheduleExc = cony.Exchange{Name: withNS(wp.namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
-
-	// retry queue
-	retry := "_retry"
-	wp.consumers[retry] = &consumer{
-		que: &cony.Queue{
-			Name:       withNS(wp.namespace, retry),
-			AutoDelete: false,
-			Durable:    true},
-		exc: wp.defaultExc,
-		jt:  &jobType{Name: "#"},
-	}
-
-	// dead queue
-	dead := "_dead"
-	wp.consumers[dead] = &consumer{
-		que: &cony.Queue{
-			Name:       withNS(wp.namespace, dead),
-			AutoDelete: false,
-			Durable:    true},
-		exc: wp.defaultExc,
-		jt:  &jobType{Name: "#"},
-	}
-
+	builtinQueue(wp.namespace, wp.defaultExc, wp.cli)
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes, wp.consumers)
 		wp.workers = append(wp.workers, w)
 	}
-
 	return wp
 }
 
@@ -136,17 +119,8 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 		jt.GenericHandler = gh
 	}
 
-	cn := &consumer{
-		que: &cony.Queue{
-			Name:       withNS(wp.namespace, jt.Name),
-			AutoDelete: false,
-			Durable:    true},
-		jt:  jt,
-		exc: wp.defaultExc,
-	}
-
 	wp.jobTypes[name] = jt
-	wp.consumers[name] = cn
+	wp.consumers[name] = newConsumer(wp.namespace, jt, wp.defaultExc)
 
 	for _, w := range wp.workers {
 		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes, wp.consumers)
@@ -255,6 +229,7 @@ func (wp *WorkerPool) observerDeclears() {
 		select {
 		case err := <-wp.cli.Errors():
 			// TODO: 暂时不知道如何处理
+			fmt.Println(err)
 			fmt.Printf("Client error: %v\n", err)
 		}
 	}
