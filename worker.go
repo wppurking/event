@@ -69,7 +69,8 @@ func (w *worker) drain() {
 	<-w.doneDrainingChan
 }
 
-var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
+//var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
+var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 3000}
 
 func (w *worker) loop() {
 	var drained bool
@@ -119,8 +120,6 @@ func (w *worker) loop() {
 func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
-
-	// TODO: 控制任务的并发
 	for n, c := range w.consumers {
 		if jt, ok := w.jobTypes[n]; ok && jt.MaxConcurrency > 0 && jt.Runs() >= jt.MaxConcurrency {
 			continue

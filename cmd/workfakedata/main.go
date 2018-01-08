@@ -15,7 +15,7 @@ var namespace = flag.String("ns", "work", "namespace")
 
 func epsilonHandler(job *work.Job) error {
 	fmt.Println("epsilon")
-	time.Sleep(time.Second)
+	time.Sleep(3 * time.Second)
 
 	if rand.Intn(2) == 0 {
 		return fmt.Errorf("random error")
@@ -34,7 +34,8 @@ func main() {
 
 	enq := work.NewEnqueuer(*namespace, cony.URL(*rabbitMqURL))
 	wp := work.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
-	wp.JobWithOptions("foobar", work.JobOptions{MaxConcurrency: 2}, epsilonHandler)
+	wp.JobWithOptions("foobar", work.JobOptions{MaxConcurrency: 2, Prefetch: 30}, epsilonHandler)
+	//wp.Job("foobar", epsilonHandler)
 	wp.Start()
 
 	select {}
