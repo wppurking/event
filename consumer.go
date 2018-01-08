@@ -12,6 +12,7 @@ type consumer struct {
 
 	// 因为 amqp 是 channel 级别安全, 但暴露出去后会有很多 goroutine 访问, 所以对于需要 ack 的 msg 使用 chan 约束
 	ackDeliveies chan ackEvent
+	done         chan int
 	que          *cony.Queue
 	c            *cony.Consumer
 }
@@ -40,6 +41,7 @@ func newConsumer(namespace string, jt *jobType, exc cony.Exchange) *consumer {
 		jt:           jt,
 		exc:          exc,
 		ackDeliveies: make(chan ackEvent, 500),
+		done:         make(chan int, 1),
 		que:          que,
 		c:            cony.NewConsumer(que, cony.Qos(prefetch)),
 	}
@@ -72,11 +74,14 @@ func (c *consumer) loopActEvent() {
 			case "reject":
 				ev.msg.Reject(false)
 			}
+		case <-c.done:
+			return
 		}
 	}
 }
 
 func (c *consumer) stop(cli *cony.Client) {
+	c.done <- 1
 	c.c.Cancel()
 }
 
