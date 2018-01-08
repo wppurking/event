@@ -20,20 +20,22 @@ type Enqueuer struct {
 	pub     *cony.Publisher
 	schePub *cony.Publisher
 
-	knownJobs map[string]int64
-	mtx       sync.RWMutex
+	opts []cony.ClientOpt // 记录下 cony.Client 需要的参数
+	mtx  sync.RWMutex
 }
 
 // NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
-func NewEnqueuer(namespace string, cli *cony.Client) *Enqueuer {
-	if cli == nil {
-		panic("NewEnqueuer needs a non-nil *cony.Client")
+func NewEnqueuer(namespace string, opts ...cony.ClientOpt) *Enqueuer {
+
+	defaultOpts := buildDefaultOpt()
+	if len(opts) == 0 {
+		panic("cony.Client 的参数错误")
 	}
+	defaultOpts = append(defaultOpts, opts...)
 
 	e := &Enqueuer{
 		Namespace: namespace,
-		cli:       cli,
-		knownJobs: make(map[string]int64),
+		cli:       cony.NewClient(defaultOpts...),
 	}
 	e.newDeclears()
 	go e.loop()
@@ -60,7 +62,13 @@ func (e *Enqueuer) loop() {
 	for e.cli.Loop() {
 		select {
 		case err := <-e.cli.Errors():
-			fmt.Println(err)
+			e, ok := err.(*amqp.Error)
+			if ok && e == nil {
+				fmt.Printf("停止客户端, 退出 loop: %v\n", e)
+				return
+			} else {
+				fmt.Println("enqueuer:", err)
+			}
 		}
 
 	}

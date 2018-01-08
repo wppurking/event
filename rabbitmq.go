@@ -35,3 +35,11 @@ func buildConyQueue(name string, table amqp.Table) *cony.Queue {
 		Args:       table,
 	}
 }
+
+// buildDefaultOpt 构建默认的 cony.Client 配置
+func buildDefaultOpt() []cony.ClientOpt {
+	return []cony.ClientOpt{
+		cony.URL(""),
+		cony.Backoff(cony.DefaultBackoff),
+	}
+}

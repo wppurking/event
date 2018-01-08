@@ -51,9 +51,12 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 	if enqueuer == nil {
 		panic("NewWorkerPool needs a non-nil *Enqueuer")
 	}
+	// 默认的 cony 配置, url, backoff
+	defaultOpts := buildDefaultOpt()
 	if len(opts) == 0 {
 		panic("请输入正确的参数")
 	}
+	defaultOpts = append(defaultOpts, opts...)
 
 	ctxType := reflect.TypeOf(ctx)
 	validateContextType(ctxType)
@@ -62,7 +65,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 		concurrency:  concurrency,
 		namespace:    namespace,
 		enqueuer:     enqueuer,
-		opts:         opts,
+		opts:         defaultOpts,
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 		consumers:    make(map[string]*consumer),
@@ -226,6 +229,8 @@ func (wp *WorkerPool) observerDeclears() {
 			if ok && e == nil {
 				fmt.Printf("停止客户端, 退出 loop: %v\n", e)
 				return
+			} else {
+				fmt.Println("err:", err)
 			}
 		}
 	}
