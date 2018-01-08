@@ -45,7 +45,7 @@ func enqueues() {
 	cli := cony.NewClient(cony.URL(*rabbitMqURL))
 	en := work.NewEnqueuer(*namespace, cli)
 	for {
-		for i := 0; i < 400; i++ {
+		for i := 0; i < 20; i++ {
 			en.Enqueue("foobar", work.Q{"i": i})
 		}
 
