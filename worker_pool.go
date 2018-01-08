@@ -17,9 +17,12 @@ type WorkerPool struct {
 	concurrency  uint
 	namespace    string // eg, "myapp-work"
 	cli          *cony.Client
+	defaultExc   cony.Exchange
+	scheduleExc  cony.Exchange
 
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
+	consumers   map[string]*consumer
 	middleware  []*middlewareHandler
 	started     bool
 
@@ -50,6 +53,8 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 	}
+	wp.defaultExc = cony.Exchange{Name: wp.withNS("work"), AutoDelete: false, Durable: true, Kind: "topic"}
+	wp.scheduleExc = cony.Exchange{Name: wp.withNS("work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes)
@@ -109,7 +114,14 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 		jt.GenericHandler = gh
 	}
 
+	cn := &consumer{
+		que: &cony.Queue{Name: wp.withNS(jt.Name)},
+		jt:  jt,
+		exc: wp.defaultExc,
+	}
+
 	wp.jobTypes[name] = jt
+	wp.consumers[name] = cn
 
 	for _, w := range wp.workers {
 		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes)
@@ -141,8 +153,7 @@ func (wp *WorkerPool) Start() {
 	wp.started = true
 
 	// TODO: we should cleanup stale keys on startup from previously registered jobs
-	wp.writeConcurrencyControlsToRedis()
-	go wp.writeKnownJobsToRedis()
+	go wp.observerDeclears()
 
 	for _, w := range wp.workers {
 		go w.start()
@@ -168,6 +179,7 @@ func (wp *WorkerPool) Stop() {
 			wg.Done()
 		}(w)
 	}
+	wp.cli.Close()
 	wg.Wait()
 	//wp.heartbeater.stop()
 }
@@ -208,18 +220,23 @@ func (wp *WorkerPool) workerIDs() []string {
 	return wids
 }
 
-func (wp *WorkerPool) writeKnownJobsToRedis() {
-	if len(wp.jobTypes) == 0 {
-		return
-	}
-	// TODO 注册已知的任务, 但对 rabbitmq 没有必要
+func (wp WorkerPool) withNS(s string) string {
+	return fmt.Sprintf("%s.%s", wp.namespace, s)
 }
 
-func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
-	if len(wp.jobTypes) == 0 {
-		return
+// 启动并监控 cony 的 rabbitmq 连接
+func (wp *WorkerPool) observerDeclears() {
+	for _, cn := range wp.consumers {
+		cn.start(wp.cli)
 	}
-	// TODO: 限制最大的并发
+	// 开始监控, 在 RabbitMQ 连接断开的时候重连
+	for wp.cli.Loop() {
+		select {
+		case err := <-wp.cli.Errors():
+			// TODO: 暂时不知道如何处理
+			fmt.Printf("Client error: %v\n", err)
+		}
+	}
 }
 
 // validateContextType will panic if context is invalid

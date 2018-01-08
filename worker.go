@@ -16,6 +16,7 @@ type worker struct {
 	poolID      string
 	namespace   string
 	jobTypes    map[string]*jobType
+	consumers   map[string]*consumer
 	middleware  []*middlewareHandler
 	contextType reflect.Type
 
@@ -116,39 +117,18 @@ func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 
-	// TODO 此方法需要重构
-	values, err := redis.Values(w.redisFetchScript.Do(nil))
-	if err == redis.ErrNil {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
+	// TODO: 控制任务的并发
+	for _, c := range w.consumers {
+		j := c.Peak()
+		if j != nil {
+			job, err := newJob(j.Body, j)
+			if err != nil {
+				return nil, err
+			}
+			return job, nil
+		}
 	}
-
-	if len(values) != 3 {
-		return nil, fmt.Errorf("need 3 elements back")
-	}
-
-	rawJSON, ok := values[0].([]byte)
-	if !ok {
-		return nil, fmt.Errorf("response msg not bytes")
-	}
-
-	dequeuedFrom, ok := values[1].([]byte)
-	if !ok {
-		return nil, fmt.Errorf("response queue not bytes")
-	}
-
-	inProgQueue, ok := values[2].([]byte)
-	if !ok {
-		return nil, fmt.Errorf("response in prog not bytes")
-	}
-
-	job, err := newJob(rawJSON, dequeuedFrom, inProgQueue)
-	if err != nil {
-		return nil, err
-	}
-
-	return job, nil
+	return nil, nil
 }
 
 func (w *worker) processJob(job *Job) {
@@ -162,6 +142,7 @@ func (w *worker) processJob(job *Job) {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
 		} else {
+			job.msg.Ack(false)
 			w.removeJobFromInProgress(job)
 		}
 	} else {

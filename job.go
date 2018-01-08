@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+
+	"github.com/streadway/amqp"
 )
 
 // Job represents a job.
@@ -25,6 +27,9 @@ type Job struct {
 	dequeuedFrom []byte
 	inProgQueue  []byte
 	argError     error
+
+	// publish 的时候没有, 但是作为 msg 进入的时候一定需要存在
+	msg *amqp.Delivery
 	//observer     *observer
 }
 
@@ -32,15 +37,14 @@ type Job struct {
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com", "track": true})
 type Q map[string]interface{}
 
-func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
+func newJob(rawJSON []byte, msg *amqp.Delivery) (*Job, error) {
 	var job Job
 	err := json.Unmarshal(rawJSON, &job)
 	if err != nil {
 		return nil, err
 	}
 	job.rawJSON = rawJSON
-	job.dequeuedFrom = dequeuedFrom
-	job.inProgQueue = inProgQueue
+	job.msg = msg
 	return &job, nil
 }
 
