@@ -79,6 +79,10 @@ func (w *worker) loop() {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	// 下面这一段对于 fetchJob 的轮训代码很棒:
+	// 既考虑了错处时的处理.
+	// 也考虑了成功处理后的获取.
+	// 也考虑到没有获取到任务的处理.
 	for {
 		select {
 		case <-w.stopChan:
@@ -117,7 +121,11 @@ func (w *worker) fetchJob() (*Job, error) {
 	// NOTE: we could optimize this to only resort every second, or something.
 
 	// TODO: 控制任务的并发
-	for _, c := range w.consumers {
+	for n, c := range w.consumers {
+		if jt, ok := w.jobTypes[n]; ok && jt.MaxConcurrency > 0 && jt.runs >= jt.MaxConcurrency {
+			fmt.Println(n, "runs:", jt.runs, "达到并发上限, 跳过当前 consumer")
+			continue
+		}
 		job, err := c.Peek()
 		if err != nil {
 			return nil, err
@@ -134,15 +142,14 @@ func (w *worker) processJob(job *Job) {
 		w.deleteUniqueJob(job)
 	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
+		jt.incr()
 		// TODO 需要增加任务执行的 mertic
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		if runErr != nil {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
-		} else {
-			// TODO: 必须拥有一个 gorouting 一个 channel
-			w.removeJobFromInProgress(job)
 		}
+		jt.decr()
 		job.Ack()
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
@@ -151,15 +158,10 @@ func (w *worker) processJob(job *Job) {
 		job.failed(runErr)
 		w.addToDead(job, runErr)
 	}
-	fmt.Println("processJob Done")
 }
 
 func (w *worker) deleteUniqueJob(job *Job) {
 	// TODO 这个暂时无法实现
-}
-
-func (w *worker) removeJobFromInProgress(job *Job) {
-	// TODO: 删除任务的执行状态
 }
 
 func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
