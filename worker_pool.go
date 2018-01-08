@@ -9,6 +9,7 @@ import (
 
 	"github.com/assembla/cony"
 	"github.com/robfig/cron"
+	"github.com/streadway/amqp"
 )
 
 const (
@@ -32,6 +33,7 @@ type WorkerPool struct {
 	middleware  []*middlewareHandler
 	started     bool
 
+	opts    []cony.ClientOpt // 记录下 cony.Client 需要的参数
 	workers []*worker
 	//heartbeater      *workerPoolHeartbeater
 }
@@ -45,9 +47,12 @@ type BackoffCalculator func(job *Job) int64
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
 // 期望 cli 与 enqueuer 是两个 connection, 避免并发时候的竞争
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *cony.Client, enqueuer *Enqueuer) *WorkerPool {
-	if cli == nil {
-		panic("NewWorkerPool needs a non-nil *cony.Client")
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer *Enqueuer, opts ...cony.ClientOpt) *WorkerPool {
+	if enqueuer == nil {
+		panic("NewWorkerPool needs a non-nil *Enqueuer")
+	}
+	if len(opts) == 0 {
+		panic("请输入正确的参数")
 	}
 
 	ctxType := reflect.TypeOf(ctx)
@@ -56,12 +61,13 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 		workerPoolID: makeIdentifier(),
 		concurrency:  concurrency,
 		namespace:    namespace,
-		cli:          cli,
 		enqueuer:     enqueuer,
+		opts:         opts,
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 		consumers:    make(map[string]*consumer),
 	}
+	wp.cli = cony.NewClient(wp.opts...)
 	wp.defaultExc = cony.Exchange{Name: withNS(wp.namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
 	wp.scheduleExc = cony.Exchange{Name: withNS(wp.namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 	builtinQueue(wp.namespace, wp.defaultExc, wp.scheduleExc, wp.cli)
@@ -157,15 +163,13 @@ func (wp *WorkerPool) Start() {
 	wp.started = true
 
 	// TODO: we should cleanup stale keys on startup from previously registered jobs
+	for _, cn := range wp.consumers {
+		cn.start(wp.cli)
+	}
 	go wp.observerDeclears()
-
 	for _, w := range wp.workers {
 		go w.start()
 	}
-
-	//wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
-	//wp.heartbeater.start()
-	wp.startRequeuers()
 }
 
 // Stop stops the workers and associated processes.
@@ -185,7 +189,8 @@ func (wp *WorkerPool) Stop() {
 	}
 	wp.cli.Close()
 	wg.Wait()
-	//wp.heartbeater.stop()
+	// 重新设置 Client, 等待重新连接
+	wp.cli = cony.NewClient(wp.opts...)
 }
 
 // Drain drains all jobs in the queue before returning. Note that if jobs are added faster than we can process them, this function wouldn't return.
@@ -201,20 +206,6 @@ func (wp *WorkerPool) Drain() {
 	wg.Wait()
 }
 
-func (wp *WorkerPool) startRequeuers() {
-	jobNames := make([]string, 0, len(wp.jobTypes))
-	for k := range wp.jobTypes {
-		jobNames = append(jobNames, k)
-	}
-	// TODO: 这个是干啥?
-	//wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
-	//wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
-	//wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
-	//wp.retrier.start()
-	//wp.scheduler.start()
-	//wp.deadPoolReaper.start()
-}
-
 func (wp *WorkerPool) workerIDs() []string {
 	wids := make([]string, 0, len(wp.workers))
 	for _, w := range wp.workers {
@@ -224,18 +215,18 @@ func (wp *WorkerPool) workerIDs() []string {
 	return wids
 }
 
-// 启动并监控 cony 的 rabbitmq 连接
+// observerDeclears 启动并监控 cony 的 rabbitmq 连接
+// 当 Client.Close 的时候, 如果是 nil, 那么则退出, 否则进行重连重试
 func (wp *WorkerPool) observerDeclears() {
-	for _, cn := range wp.consumers {
-		cn.start(wp.cli)
-	}
 	// 开始监控, 在 RabbitMQ 连接断开的时候重连
 	for wp.cli.Loop() {
 		select {
 		case err := <-wp.cli.Errors():
-			// TODO: 暂时不知道如何处理
-			fmt.Println(err)
-			fmt.Printf("Client error: %v\n", err)
+			e, ok := err.(*amqp.Error)
+			if ok && e == nil {
+				fmt.Printf("停止客户端, 退出 loop: %v\n", e)
+				return
+			}
 		}
 	}
 }

@@ -59,7 +59,8 @@ type c struct{}
 func TestEnqueueIn(t *testing.T) {
 	cli := newCli()
 	ns := "work"
-	wp := NewWorkerPool(c{}, 20, ns, cli)
+	enq := NewEnqueuer(ns, cony.NewClient(cony.URL("")))
+	wp := NewWorkerPool(c{}, 20, ns, enq, cony.URL(""))
 	wp.Start()
 	defer wp.Stop()
 	enqueuer := NewEnqueuer(ns, cli)

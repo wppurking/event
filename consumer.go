@@ -25,15 +25,6 @@ type ackEvent struct {
 
 // 根据参数创建一个新的 consumer
 func newConsumer(namespace string, jt *jobType, exc cony.Exchange) *consumer {
-	prefetch := 20
-	if jt != nil {
-		prefetch = jt.Prefetch
-	}
-	// prefetch 必须大于 0, 不可以无限制
-	if prefetch <= 0 {
-		prefetch = 20
-	}
-
 	que := buildConyQueue(withNS(namespace, jt.Name), nil)
 
 	return &consumer{
@@ -43,8 +34,19 @@ func newConsumer(namespace string, jt *jobType, exc cony.Exchange) *consumer {
 		ackDeliveies: make(chan ackEvent, 500),
 		done:         make(chan int, 1),
 		que:          que,
-		c:            cony.NewConsumer(que, cony.Qos(prefetch)),
 	}
+}
+
+func (c *consumer) prefetch() int {
+	prefetch := 20
+	if c.jt != nil {
+		prefetch = c.jt.Prefetch
+	}
+	// prefetch 必须大于 0, 不可以无限制
+	if prefetch <= 0 {
+		prefetch = 20
+	}
+	return prefetch
 }
 
 // 返回需要进行 Declare 的内容. Queue 与 binding 的 Declear
@@ -57,6 +59,9 @@ func (c *consumer) Declares() (ds []cony.Declaration) {
 }
 
 func (c *consumer) start(cli *cony.Client) {
+	if c.c == nil {
+		c.c = cony.NewConsumer(c.que, cony.Qos(c.prefetch()))
+	}
 	cli.Declare(c.Declares())
 	cli.Consume(c.c)
 	go c.loopActEvent()
@@ -83,10 +88,14 @@ func (c *consumer) loopActEvent() {
 func (c *consumer) stop(cli *cony.Client) {
 	c.done <- 1
 	c.c.Cancel()
+	c.c = nil
 }
 
 // Peek 一个任务
 func (c *consumer) Peek() (*Job, error) {
+	if c.c == nil {
+		return nil, nil
+	}
 	select {
 	case j := <-c.c.Deliveries():
 		return newJob(j.Body, &j, c.ack)
@@ -101,6 +110,9 @@ func (c *consumer) ack(ev ackEvent) {
 
 // Pop 阻塞的获取一个任务
 func (c *consumer) Pop() (*Job, error) {
+	if c.c == nil {
+		return nil, nil
+	}
 	j := <-c.c.Deliveries()
 	return newJob(j.Body, &j, c.ack)
 }

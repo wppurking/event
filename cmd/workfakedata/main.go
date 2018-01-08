@@ -33,8 +33,7 @@ func main() {
 	go enqueues()
 
 	enq := work.NewEnqueuer(*namespace, cony.NewClient(cony.URL(*rabbitMqURL)))
-	wp := work.NewWorkerPool(context{}, 5, *namespace,
-		cony.NewClient(cony.URL(*rabbitMqURL)), enq)
+	wp := work.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
 	wp.JobWithOptions("foobar", work.JobOptions{MaxConcurrency: 2}, epsilonHandler)
 	wp.Start()
 
