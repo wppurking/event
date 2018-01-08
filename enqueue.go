@@ -75,22 +75,6 @@ func (e *Enqueuer) Enqueue(routingKey string, args map[string]interface{}) (*Job
 		EnqueuedAt: nowEpochSeconds(),
 		Args:       args,
 	}
-
-	/*
-		rawJSON, err := job.serialize()
-		if err != nil {
-			return nil, err
-		}
-
-		e.pub.PublishWithRoutingKey(amqp.Publishing{
-			Body:         rawJSON,
-			DeliveryMode: 2,
-			ContentType:  "application/json",
-			Timestamp:    time.Now(),
-		}, routingKey)
-
-		return job, nil
-	*/
 	err := e.EnqueueJob(job)
 	if err != nil {
 		return nil, err
@@ -106,27 +90,6 @@ func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, args map[s
 		EnqueuedAt: nowEpochSeconds(),
 		Args:       args,
 	}
-
-	/*
-		rawJSON, err := job.serialize()
-		if err != nil {
-			return nil, err
-		}
-
-		scheduledJob := &ScheduledJob{
-			RunAt: nowEpochSeconds() + secondsFromNow,
-			Job:   job,
-		}
-		e.schePub.PublishWithRoutingKey(amqp.Publishing{
-			Body:         rawJSON,
-			DeliveryMode: 2,
-			ContentType:  "application/json",
-			Timestamp:    time.Now(),
-			Expiration:   strconv.Itoa(int(secondsFromNow)),
-		}, routingKey)
-
-		return scheduledJob, nil
-	*/
 	return e.EnqueueInJob(job, secondsFromNow)
 }
 
