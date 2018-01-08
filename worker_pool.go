@@ -118,7 +118,6 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 		Name:           name,
 		DynamicHandler: vfn,
 		JobOptions:     jobOpts,
-		mtx:            sync.Mutex{},
 	}
 	if gh, ok := fn.(func(*Job) error); ok {
 		jt.IsGeneric = true

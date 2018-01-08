@@ -122,8 +122,7 @@ func (w *worker) fetchJob() (*Job, error) {
 
 	// TODO: 控制任务的并发
 	for n, c := range w.consumers {
-		if jt, ok := w.jobTypes[n]; ok && jt.MaxConcurrency > 0 && jt.runs >= jt.MaxConcurrency {
-			fmt.Println(n, "runs:", jt.runs, "达到并发上限, 跳过当前 consumer")
+		if jt, ok := w.jobTypes[n]; ok && jt.MaxConcurrency > 0 && jt.Runs() >= jt.MaxConcurrency {
 			continue
 		}
 		job, err := c.Peek()
