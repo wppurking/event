@@ -18,6 +18,9 @@ func TestEnqueue(t *testing.T) {
 	ns := "work"
 	name := "wat"
 	enqueuer := NewEnqueuer(ns, cli)
+	cn := newConsumer(enqueuer.Namespace, &jobType{Name: name}, enqueuer.defaultExc)
+	cn.start(cli)
+
 	job, err := enqueuer.Enqueue(name, Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	assert.Equal(t, "wat", job.Name)
@@ -28,12 +31,6 @@ func TestEnqueue(t *testing.T) {
 	assert.EqualValues(t, 1, job.ArgInt64("a"))
 	assert.NoError(t, job.ArgError())
 
-	cn := &consumer{
-		que: &cony.Queue{Name: withNS(enqueuer.Namespace, name)},
-		jt:  &jobType{Name: name},
-		exc: enqueuer.defaultExc,
-	}
-	cn.start(cli)
 	j, _ := cn.Pop()
 	fmt.Println(j)
 	err = j.msg.Ack(false)
@@ -51,8 +48,10 @@ func TestEnqueue(t *testing.T) {
 	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	// pop 两次
-	cn.Pop()
-	cn.Pop()
+	j, _ = cn.Pop()
+	j.msg.Ack(false)
+	j, _ = cn.Pop()
+	j.msg.Ack(false)
 }
 
 type c struct{}

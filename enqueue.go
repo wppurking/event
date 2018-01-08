@@ -52,7 +52,7 @@ func (e *Enqueuer) newDeclears() {
 	})
 	e.cli.Publish(e.pub)
 	e.cli.Publish(e.schePub)
-	builtinQueue(e.Namespace, e.defaultExc, e.cli)
+	builtinQueue(e.Namespace, e.defaultExc, e.scheduleExc, e.cli)
 }
 
 // 开始保护 rabbitmq 的连接
