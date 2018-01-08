@@ -1,7 +1,10 @@
 package work
 
 import (
+	"fmt"
+
 	"github.com/assembla/cony"
+	"github.com/streadway/amqp"
 )
 
 type consumer struct {
@@ -9,8 +12,16 @@ type consumer struct {
 	exc       cony.Exchange
 	namespace string
 
-	que *cony.Queue
-	c   *cony.Consumer
+	// 因为 amqp 是 channel 级别安全, 但暴露出去后会有很多 goroutine 访问, 所以对于需要 ack 的 msg 使用 chan 约束
+	ackDeliveies chan ackEvent
+	que          *cony.Queue
+	c            *cony.Consumer
+}
+
+type ackEvent struct {
+	msg *amqp.Delivery
+	// t: 操作类型, 两种 ack/nack/reject
+	t string
 }
 
 // 根据参数创建一个新的 consumer
@@ -27,11 +38,12 @@ func newConsumer(namespace string, jt *jobType, exc cony.Exchange) *consumer {
 	que := buildConyQueue(withNS(namespace, jt.Name), nil)
 
 	return &consumer{
-		namespace: namespace,
-		jt:        jt,
-		exc:       exc,
-		que:       que,
-		c:         cony.NewConsumer(que, cony.Qos(prefetch)),
+		namespace:    namespace,
+		jt:           jt,
+		exc:          exc,
+		ackDeliveies: make(chan ackEvent, 500),
+		que:          que,
+		c:            cony.NewConsumer(que, cony.Qos(prefetch)),
 	}
 }
 
@@ -47,6 +59,24 @@ func (c *consumer) Declares() (ds []cony.Declaration) {
 func (c *consumer) start(cli *cony.Client) {
 	cli.Declare(c.Declares())
 	cli.Consume(c.c)
+	go c.loopActEvent()
+}
+
+func (c *consumer) loopActEvent() {
+	for {
+		select {
+		case ev := <-c.ackDeliveies:
+			fmt.Println("loop ack:", ev.t)
+			switch ev.t {
+			case "ack":
+				ev.msg.Ack(false)
+			case "nack":
+				ev.msg.Nack(false, true)
+			case "reject":
+				ev.msg.Reject(false)
+			}
+		}
+	}
 }
 
 func (c *consumer) stop(cli *cony.Client) {
@@ -57,14 +87,18 @@ func (c *consumer) stop(cli *cony.Client) {
 func (c *consumer) Peek() (*Job, error) {
 	select {
 	case j := <-c.c.Deliveries():
-		return newJob(j.Body, &j)
+		return newJob(j.Body, &j, c.ack)
 	default:
 		return nil, nil
 	}
 }
 
+func (c *consumer) ack(ev ackEvent) {
+	c.ackDeliveies <- ev
+}
+
 // Pop 阻塞的获取一个任务
 func (c *consumer) Pop() (*Job, error) {
 	j := <-c.c.Deliveries()
-	return newJob(j.Body, &j)
+	return newJob(j.Body, &j, c.ack)
 }

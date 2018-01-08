@@ -27,9 +27,11 @@ type Job struct {
 	dequeuedFrom []byte
 	inProgQueue  []byte
 	argError     error
+	msg          *amqp.Delivery
+	// ack 的行动
+	ack func(ev ackEvent)
 
 	// publish 的时候没有, 但是作为 msg 进入的时候一定需要存在
-	msg *amqp.Delivery
 	//observer     *observer
 }
 
@@ -37,7 +39,7 @@ type Job struct {
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com", "track": true})
 type Q map[string]interface{}
 
-func newJob(rawJSON []byte, msg *amqp.Delivery) (*Job, error) {
+func newJob(rawJSON []byte, msg *amqp.Delivery, ack func(ev ackEvent)) (*Job, error) {
 	var job Job
 	err := json.Unmarshal(rawJSON, &job)
 	if err != nil {
@@ -45,7 +47,32 @@ func newJob(rawJSON []byte, msg *amqp.Delivery) (*Job, error) {
 	}
 	job.rawJSON = rawJSON
 	job.msg = msg
+	job.ack = ack
 	return &job, nil
+}
+
+func (j *Job) Ack() bool {
+	if j.ack == nil {
+		return false
+	}
+	j.ack(ackEvent{msg: j.msg, t: "ack"})
+	return true
+}
+
+func (j *Job) Nack() bool {
+	if j.ack == nil {
+		return false
+	}
+	j.ack(ackEvent{msg: j.msg, t: "nack"})
+	return true
+}
+
+func (j *Job) Reject() bool {
+	if j.ack == nil {
+		return false
+	}
+	j.ack(ackEvent{msg: j.msg, t: "reject"})
+	return true
 }
 
 func (j *Job) serialize() ([]byte, error) {

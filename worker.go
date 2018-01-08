@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"reflect"
 	"time"
-
-	"github.com/garyburd/redigo/redis"
 )
 
 type worker struct {
@@ -18,8 +16,6 @@ type worker struct {
 	consumers   map[string]*consumer
 	middleware  []*middlewareHandler
 	contextType reflect.Type
-
-	redisFetchScript *redis.Script
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
@@ -144,9 +140,10 @@ func (w *worker) processJob(job *Job) {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
 		} else {
-			job.msg.Ack(false)
+			// TODO: 必须拥有一个 gorouting 一个 channel
 			w.removeJobFromInProgress(job)
 		}
+		job.Ack()
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
@@ -154,6 +151,7 @@ func (w *worker) processJob(job *Job) {
 		job.failed(runErr)
 		w.addToDead(job, runErr)
 	}
+	fmt.Println("processJob Done")
 }
 
 func (w *worker) deleteUniqueJob(job *Job) {
