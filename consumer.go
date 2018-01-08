@@ -1,8 +1,6 @@
 package work
 
 import (
-	"fmt"
-
 	"github.com/assembla/cony"
 	"github.com/streadway/amqp"
 )
@@ -66,7 +64,6 @@ func (c *consumer) loopActEvent() {
 	for {
 		select {
 		case ev := <-c.ackDeliveies:
-			fmt.Println("loop ack:", ev.t)
 			switch ev.t {
 			case "ack":
 				ev.msg.Ack(false)

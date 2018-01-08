@@ -161,7 +161,7 @@ func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) (*ScheduledJob, 
 		DeliveryMode: 2,
 		ContentType:  "application/json",
 		Timestamp:    time.Now(),
-		Expiration:   strconv.Itoa(int(secondsFromNow)),
+		Expiration:   strconv.Itoa(int(secondsFromNow * 1000)),
 	}, job.Name)
 
 	return scheduledJob, nil
