@@ -74,7 +74,7 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 
 func TestWorkerPoolStartStop(t *testing.T) {
 	ns := "work"
-	enq := NewEnqueuer(ns, cony.NewClient(cony.URL("")))
+	enq := NewEnqueuer(ns, cony.URL(""))
 	wp := NewWorkerPool(TestContext{}, 10, ns, enq, cony.URL(""))
 	wp.Start()
 	wp.Start()
@@ -86,7 +86,7 @@ func TestWorkerPoolStartStop(t *testing.T) {
 
 func TestWorkerPoolValidations(t *testing.T) {
 	ns := "work"
-	enq := NewEnqueuer(ns, cony.NewClient(cony.URL("")))
+	enq := NewEnqueuer(ns, cony.URL(""))
 	wp := NewWorkerPool(TestContext{}, 10, ns, enq, cony.URL(""))
 
 	func() {
