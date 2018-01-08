@@ -2,7 +2,6 @@ package work
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	RoutingKey     string            // 给 RabbitMQ 使用的 routing_key, 如果存在则绑定, 如果不存在则只 consume queue
 	Prefetch       int               // 指定队列的 Prefetch 数量
 	Priority       uint              // Priority from 1 to 10000
 	MaxFails       uint              // 1: send straight to dead (unless SkipDead)

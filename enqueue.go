@@ -1,7 +1,6 @@
 package work
 
 import (
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -35,17 +34,12 @@ func NewEnqueuer(namespace string, cli *cony.Client) *Enqueuer {
 		cli:       cli,
 		knownJobs: make(map[string]int64),
 	}
-	e.defaultExc = cony.Exchange{Name: e.withNS("work"), AutoDelete: false, Durable: true, Kind: "topic"}
-	e.scheduleExc = cony.Exchange{Name: e.withNS("work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
+	e.defaultExc = cony.Exchange{Name: withNS(e.Namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
+	e.scheduleExc = cony.Exchange{Name: withNS(e.Namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 	e.pub = cony.NewPublisher(e.defaultExc.Name, "")
 	e.schePub = cony.NewPublisher(e.scheduleExc.Name, "")
 	go e.loop()
 	return e
-}
-
-// TODO: 这个方法可以考虑和 workpool 合并
-func (e *Enqueuer) withNS(s string) string {
-	return fmt.Sprintf("%s.%s", e.Namespace, s)
 }
 
 // 开始保护 rabbitmq 的连接

@@ -53,8 +53,8 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 	}
-	wp.defaultExc = cony.Exchange{Name: wp.withNS("work"), AutoDelete: false, Durable: true, Kind: "topic"}
-	wp.scheduleExc = cony.Exchange{Name: wp.withNS("work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
+	wp.defaultExc = cony.Exchange{Name: withNS(wp.namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
+	wp.scheduleExc = cony.Exchange{Name: withNS(wp.namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 
 	// TODO: 还需要添加
 	// retry queue
@@ -119,7 +119,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	}
 
 	cn := &consumer{
-		que: &cony.Queue{Name: wp.withNS(jt.Name)},
+		que: &cony.Queue{Name: withNS(wp.namespace, jt.Name)},
 		jt:  jt,
 		exc: wp.defaultExc,
 	}
@@ -222,10 +222,6 @@ func (wp *WorkerPool) workerIDs() []string {
 	}
 	sort.Strings(wids)
 	return wids
-}
-
-func (wp WorkerPool) withNS(s string) string {
-	return fmt.Sprintf("%s.%s", wp.namespace, s)
 }
 
 // 启动并监控 cony 的 rabbitmq 连接

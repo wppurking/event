@@ -15,10 +15,7 @@ type consumer struct {
 // 返回需要进行 Declare 的内容
 func (c *consumer) Declares() (ds []cony.Declaration) {
 	ds = append(ds, cony.DeclareQueue(c.que))
-	if len(c.jt.RoutingKey) > 0 {
-		ds = append(ds,
-			cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.jt.RoutingKey}))
-	}
+	ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.jt.Name}))
 
 	prefetch := c.jt.Prefetch
 	// prefetch 必须大于 0, 不可以无限制
