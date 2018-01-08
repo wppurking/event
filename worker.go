@@ -9,10 +9,9 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-const fetchKeysPerJobType = 6
-
 type worker struct {
 	workerID    string
+	enqueuer    *Enqueuer
 	poolID      string
 	namespace   string
 	jobTypes    map[string]*jobType
@@ -29,11 +28,14 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType, consumers map[string]*consumer) *worker {
+func newWorker(namespace string, poolID string, contextType reflect.Type,
+	middleware []*middlewareHandler, enqueuer *Enqueuer,
+	jobTypes map[string]*jobType, consumers map[string]*consumer) *worker {
 	workerID := makeIdentifier()
 
 	w := &worker{
 		workerID:    workerID,
+		enqueuer:    enqueuer,
 		poolID:      poolID,
 		namespace:   namespace,
 		contextType: contextType,
@@ -174,11 +176,6 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 }
 
 func (w *worker) addToRetry(job *Job, runErr error) {
-	rawJSON, err := job.serialize()
-	if err != nil {
-		logError("worker.add_to_retry", err)
-		return
-	}
 
 	var backoff BackoffCalculator
 
@@ -191,19 +188,18 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	if backoff == nil {
 		backoff = defaultBackoffCalculator
 	}
-	fmt.Println(rawJSON)
-	// TODO: 需要进行 backoff 的重试机制
+	_, err := w.enqueuer.EnqueueInJob(job, backoff(job))
+	if err != nil {
+		logError("worker.add_to_retry", err)
+	}
 }
 
 func (w *worker) addToDead(job *Job, runErr error) {
-	rawJSON, err := job.serialize()
-
+	job.Name = fmt.Sprintf("%s.%s", deadQueue, job.Name)
+	err := w.enqueuer.EnqueueJob(job)
 	if err != nil {
 		logError("worker.add_to_dead.serialize", err)
-		return
 	}
-	fmt.Println(rawJSON)
-	// TODO: 需要将队列添加到死队列中
 }
 
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion

@@ -76,18 +76,25 @@ func (e *Enqueuer) Enqueue(routingKey string, args map[string]interface{}) (*Job
 		Args:       args,
 	}
 
-	rawJSON, err := job.serialize()
+	/*
+		rawJSON, err := job.serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		e.pub.PublishWithRoutingKey(amqp.Publishing{
+			Body:         rawJSON,
+			DeliveryMode: 2,
+			ContentType:  "application/json",
+			Timestamp:    time.Now(),
+		}, routingKey)
+
+		return job, nil
+	*/
+	err := e.EnqueueJob(job)
 	if err != nil {
 		return nil, err
 	}
-
-	e.pub.PublishWithRoutingKey(amqp.Publishing{
-		Body:         rawJSON,
-		DeliveryMode: 2,
-		ContentType:  "application/json",
-		Timestamp:    time.Now(),
-	}, routingKey)
-
 	return job, nil
 }
 
@@ -100,6 +107,46 @@ func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, args map[s
 		Args:       args,
 	}
 
+	/*
+		rawJSON, err := job.serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		scheduledJob := &ScheduledJob{
+			RunAt: nowEpochSeconds() + secondsFromNow,
+			Job:   job,
+		}
+		e.schePub.PublishWithRoutingKey(amqp.Publishing{
+			Body:         rawJSON,
+			DeliveryMode: 2,
+			ContentType:  "application/json",
+			Timestamp:    time.Now(),
+			Expiration:   strconv.Itoa(int(secondsFromNow)),
+		}, routingKey)
+
+		return scheduledJob, nil
+	*/
+	return e.EnqueueInJob(job, secondsFromNow)
+}
+
+func (e *Enqueuer) EnqueueJob(job *Job) error {
+	rawJSON, err := job.serialize()
+	if err != nil {
+		return err
+	}
+
+	e.pub.PublishWithRoutingKey(amqp.Publishing{
+		Body:         rawJSON,
+		DeliveryMode: 2,
+		ContentType:  "application/json",
+		Timestamp:    time.Now(),
+	}, job.Name)
+
+	return nil
+}
+
+func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) (*ScheduledJob, error) {
 	rawJSON, err := job.serialize()
 	if err != nil {
 		return nil, err
@@ -115,7 +162,7 @@ func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, args map[s
 		ContentType:  "application/json",
 		Timestamp:    time.Now(),
 		Expiration:   strconv.Itoa(int(secondsFromNow)),
-	}, routingKey)
+	}, job.Name)
 
 	return scheduledJob, nil
 }

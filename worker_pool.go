@@ -24,6 +24,7 @@ type WorkerPool struct {
 	cli          *cony.Client
 	defaultExc   cony.Exchange
 	scheduleExc  cony.Exchange
+	enqueuer     *Enqueuer // workPool 内部的消息发送器
 
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
@@ -43,7 +44,8 @@ type BackoffCalculator func(job *Job) int64
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *cony.Client) *WorkerPool {
+// 期望 cli 与 enqueuer 是两个 connection, 避免并发时候的竞争
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *cony.Client, enqueuer *Enqueuer) *WorkerPool {
 	if cli == nil {
 		panic("NewWorkerPool needs a non-nil *cony.Client")
 	}
@@ -55,6 +57,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 		concurrency:  concurrency,
 		namespace:    namespace,
 		cli:          cli,
+		enqueuer:     enqueuer,
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 		consumers:    make(map[string]*consumer),
@@ -63,7 +66,9 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, cli *con
 	wp.scheduleExc = cony.Exchange{Name: withNS(wp.namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 	builtinQueue(wp.namespace, wp.defaultExc, wp.scheduleExc, wp.cli)
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType, nil, wp.jobTypes, wp.consumers)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType,
+			nil, enqueuer,
+			wp.jobTypes, wp.consumers)
 		wp.workers = append(wp.workers, w)
 	}
 	return wp
