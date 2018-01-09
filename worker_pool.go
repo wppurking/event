@@ -21,11 +21,11 @@ type WorkerPool struct {
 	scheduleExc  cony.Exchange
 	enqueuer     *Enqueuer // workPool 内部的消息发送器
 
-	contextType reflect.Type
-	jobTypes    map[string]*consumerType
-	consumers   map[string]*consumer
-	middleware  []*middlewareHandler
-	started     bool
+	contextType   reflect.Type
+	consumerTypes map[string]*consumerType
+	consumers     map[string]*consumer
+	middleware    []*middlewareHandler
+	started       bool
 
 	opts    []cony.ClientOpt // 记录下 cony.Client 需要的参数
 	workers []*worker
@@ -55,14 +55,14 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 	ctxType := reflect.TypeOf(ctx)
 	validateContextType(ctxType)
 	wp := &WorkerPool{
-		workerPoolID: makeIdentifier(),
-		concurrency:  concurrency,
-		namespace:    namespace,
-		enqueuer:     enqueuer,
-		opts:         defaultOpts,
-		contextType:  ctxType,
-		jobTypes:     make(map[string]*consumerType),
-		consumers:    make(map[string]*consumer),
+		workerPoolID:  makeIdentifier(),
+		concurrency:   concurrency,
+		namespace:     namespace,
+		enqueuer:      enqueuer,
+		opts:          defaultOpts,
+		contextType:   ctxType,
+		consumerTypes: make(map[string]*consumerType),
+		consumers:     make(map[string]*consumer),
 	}
 	wp.cli = cony.NewClient(wp.opts...)
 	wp.defaultExc = cony.Exchange{Name: withNS(wp.namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
@@ -72,7 +72,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType,
 			nil, enqueuer,
-			wp.jobTypes, wp.consumers)
+			wp.consumerTypes, wp.consumers)
 		wp.workers = append(wp.workers, w)
 	}
 	return wp
@@ -97,7 +97,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	wp.middleware = append(wp.middleware, mw)
 
 	for _, w := range wp.workers {
-		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes, wp.consumers)
+		w.updateMiddlewareAndJobTypes(wp.middleware, wp.consumerTypes, wp.consumers)
 	}
 
 	return wp
@@ -130,11 +130,11 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 		jt.GenericHandler = gh
 	}
 
-	wp.jobTypes[n] = jt
+	wp.consumerTypes[n] = jt
 	wp.consumers[n] = newConsumer(wp.namespace, jt, wp.defaultExc)
 
 	for _, w := range wp.workers {
-		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes, wp.consumers)
+		w.updateMiddlewareAndJobTypes(wp.middleware, wp.consumerTypes, wp.consumers)
 	}
 
 	return wp

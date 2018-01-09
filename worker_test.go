@@ -12,8 +12,8 @@ func TestWorkerBasics(t *testing.T) {
 	var arg2 float64
 	var arg3 float64
 
-	jobTypes := make(map[string]*consumerType)
-	jobTypes[job1] = &consumerType{
+	consumerTypes := make(map[string]*consumerType)
+	consumerTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -22,7 +22,7 @@ func TestWorkerBasics(t *testing.T) {
 			return nil
 		},
 	}
-	jobTypes[job2] = &consumerType{
+	consumerTypes[job2] = &consumerType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -31,7 +31,7 @@ func TestWorkerBasics(t *testing.T) {
 			return nil
 		},
 	}
-	jobTypes[job3] = &consumerType{
+	consumerTypes[job3] = &consumerType{
 		Name:       job3,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -49,7 +49,7 @@ func TestWorkerBasics(t *testing.T) {
 	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", tstCtxType, nil, consumerTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -84,8 +84,8 @@ func TestWorkerInProgress(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*consumerType)
-	jobTypes[job1] = &consumerType{
+	consumerTypes := make(map[string]*consumerType)
+	consumerTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -99,7 +99,7 @@ func TestWorkerInProgress(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
 
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
@@ -137,8 +137,8 @@ func TestWorkerRetry(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*consumerType)
-	jobTypes[job1] = &consumerType{
+	consumerTypes := make(map[string]*consumerType)
+	consumerTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
 		IsGeneric:  true,
@@ -150,7 +150,7 @@ func TestWorkerRetry(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -189,8 +189,8 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 		return 5 // Always 5 seconds
 	}
 
-	jobTypes := make(map[string]*consumerType)
-	jobTypes[job1] = &consumerType{
+	consumerTypes := make(map[string]*consumerType)
+	consumerTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
 		IsGeneric:  true,
@@ -202,7 +202,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -236,8 +236,8 @@ func TestWorkerDead(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*consumerType)
-	jobTypes[job1] = &consumerType{
+	consumerTypes := make(map[string]*consumerType)
+	consumerTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
 		IsGeneric:  true,
@@ -245,7 +245,7 @@ func TestWorkerDead(t *testing.T) {
 			return fmt.Errorf("sorry kid1")
 		},
 	}
-	jobTypes[job2] = &consumerType{
+	consumerTypes[job2] = &consumerType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
 		IsGeneric:  true,
@@ -259,7 +259,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -291,8 +291,8 @@ func TestWorkersPaused(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*consumerType)
-	jobTypes[job1] = &consumerType{
+	consumerTypes := make(map[string]*consumerType)
+	consumerTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -306,7 +306,7 @@ func TestWorkersPaused(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	// pause the jobs prior to starting
 	err = pauseJobs(ns, job1, pool)
 	assert.Nil(t, err)
