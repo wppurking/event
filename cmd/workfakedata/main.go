@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/assembla/cony"
@@ -16,13 +17,10 @@ func epsilonHandler(job *work.Message) error {
 	fmt.Println("epsilon")
 	time.Sleep(time.Second)
 
-	return fmt.Errorf("random error")
-	/*
-		if rand.Intn(2) == 0 {
-			return fmt.Errorf("random error")
-		}
-		return nil
-	*/
+	if rand.Intn(2) == 0 {
+		return fmt.Errorf("random error")
+	}
+	return nil
 }
 
 type context struct{}
