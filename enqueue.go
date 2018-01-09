@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/assembla/cony"
+	"github.com/json-iterator/go"
 	"github.com/streadway/amqp"
 )
 
@@ -76,64 +76,41 @@ func (e *Enqueuer) loop() {
 
 // Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(routingKey string, args map[string]interface{}) (*Job, error) {
-	job := &Job{
-		Name:       routingKey,
-		ID:         makeIdentifier(),
-		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
+func (e *Enqueuer) Enqueue(routingKey string, msg map[string]interface{}) (*Job, error) {
+	return e.EnqueueIn(routingKey, 0, msg)
+}
+
+// EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
+func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Job, error) {
+	body, err := jsoniter.Marshal(msg)
+	if err != nil {
+		return nil, err
 	}
-	err := e.EnqueueJob(job)
+	// 将 msg 转换为 []byte 借用 Delivery 压入 RabbitMQ
+	job := &Job{
+		Name:     routingKey,
+		Delivery: &amqp.Delivery{Body: body},
+	}
+	err = e.EnqueueInJob(job, secondsFromNow)
 	if err != nil {
 		return nil, err
 	}
 	return job, nil
 }
 
-// EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
-func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
-	job := &Job{
-		Name:       routingKey,
-		ID:         makeIdentifier(),
-		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
-	}
-	return e.EnqueueInJob(job, secondsFromNow)
+// EnqueueJob 压入一个 job 任务
+func (e *Enqueuer) EnqueueJob(job *Job) error {
+	return e.EnqueueInJob(job, 0)
 }
 
-func (e *Enqueuer) EnqueueJob(job *Job) error {
-	rawJSON, err := job.serialize()
+func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) error {
+	msg, err := job.encode()
 	if err != nil {
 		return err
 	}
 
-	e.pub.PublishWithRoutingKey(amqp.Publishing{
-		Body:         rawJSON,
-		DeliveryMode: 2,
-		ContentType:  "application/json",
-		Timestamp:    time.Now(),
-	}, job.Name)
-
-	return nil
-}
-
-func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) (*ScheduledJob, error) {
-	rawJSON, err := job.serialize()
-	if err != nil {
-		return nil, err
+	if secondsFromNow > 0 {
+		msg.pub.Expiration = strconv.Itoa(int(secondsFromNow * 1000))
 	}
-
-	scheduledJob := &ScheduledJob{
-		RunAt: nowEpochSeconds() + secondsFromNow,
-		Job:   job,
-	}
-	e.schePub.PublishWithRoutingKey(amqp.Publishing{
-		Body:         rawJSON,
-		DeliveryMode: 2,
-		ContentType:  "application/json",
-		Timestamp:    time.Now(),
-		Expiration:   strconv.Itoa(int(secondsFromNow * 1000)),
-	}, job.Name)
-
-	return scheduledJob, nil
+	return e.schePub.PublishWithRoutingKey(msg.pub, msg.routingKey)
 }

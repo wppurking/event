@@ -4,7 +4,6 @@ package work
 import (
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/streadway/amqp"
 )
 
@@ -14,14 +13,11 @@ type message struct {
 }
 
 // 输出 rabbitmq 使用的 Publishing
-func (j *Job) serializeMsg() (*message, error) {
-	rawJSON, err := jsoniter.Marshal(j)
-	if err != nil {
-		return nil, err
-	}
+func (j *Job) encode() (*message, error) {
 	p := amqp.Publishing{
-		Headers:      amqp.Table{"name": j.Name, "fails": j.Fails},
-		Body:         rawJSON,
+		MessageId:    makeIdentifier(),
+		Headers:      j.Headers,
+		Body:         j.Body,
 		DeliveryMode: 2,
 		ContentType:  "application/json",
 		Timestamp:    time.Now(),
@@ -30,4 +26,13 @@ func (j *Job) serializeMsg() (*message, error) {
 		pub:        p,
 		routingKey: j.Name,
 	}, nil
+}
+
+// 解析出一个 Job
+func decodeJob(msg *amqp.Delivery, ack func(ev ackEvent)) *Job {
+	return &Job{
+		Name:     msg.RoutingKey,
+		Delivery: msg,
+		ack:      ack,
+	}
 }

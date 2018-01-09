@@ -12,14 +12,8 @@ type Job struct {
 	*amqp.Delivery `json:"-"`
 
 	// Inputs when making a new job
-	Name       string                 `json:"name,omitempty"`
-	ID         string                 `json:"id"`
-	EnqueuedAt int64                  `json:"t"`
-	Args       map[string]interface{} `json:"args"`
-	Unique     bool                   `json:"unique,omitempty"`
-
+	Name     string            `json:"-"`
 	fails    int64             `json:"-"`
-	rawJSON  []byte            `json:"-"`
 	argError error             `json:"-"`
 	ack      func(ev ackEvent) `json:"-"` // ack 的行动
 }
@@ -27,18 +21,6 @@ type Job struct {
 // Q is a shortcut to easily specify arguments for jobs when enqueueing them.
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com", "track": true})
 type Q map[string]interface{}
-
-func newJob(rawJSON []byte, msg *amqp.Delivery, ack func(ev ackEvent)) (*Job, error) {
-	var job Job
-	err := jsoniter.Unmarshal(rawJSON, &job)
-	if err != nil {
-		return nil, err
-	}
-	job.rawJSON = rawJSON
-	job.Delivery = msg
-	job.ack = ack
-	return &job, nil
-}
 
 func (j *Job) Ack() bool {
 	if j.ack == nil {

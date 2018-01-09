@@ -90,6 +90,9 @@ func (c *consumer) stop(cli *cony.Client) {
 	c.c.Cancel()
 	c.c = nil
 }
+func (c *consumer) ack(ev ackEvent) {
+	c.ackDeliveies <- ev
+}
 
 // Peek 一个任务
 func (c *consumer) Peek() (*Job, error) {
@@ -97,15 +100,13 @@ func (c *consumer) Peek() (*Job, error) {
 		return nil, nil
 	}
 	select {
+	case err := <-c.c.Errors():
+		return nil, err
 	case j := <-c.c.Deliveries():
-		return newJob(j.Body, &j, c.ack)
+		return decodeJob(&j, c.ack), nil
 	default:
 		return nil, nil
 	}
-}
-
-func (c *consumer) ack(ev ackEvent) {
-	c.ackDeliveies <- ev
 }
 
 // Pop 阻塞的获取一个任务
@@ -114,5 +115,5 @@ func (c *consumer) Pop() (*Job, error) {
 		return nil, nil
 	}
 	j := <-c.c.Deliveries()
-	return newJob(j.Body, &j, c.ack)
+	return decodeJob(&j, c.ack), nil
 }
