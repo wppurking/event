@@ -177,6 +177,7 @@ func (wp *WorkerPool) Stop() {
 }
 
 // Drain drains all jobs in the queue before returning. Note that if jobs are added faster than we can process them, this function wouldn't return.
+// TODO: 这个方法还不正确, 需要调整
 func (wp *WorkerPool) Drain() {
 	wg := sync.WaitGroup{}
 	for _, w := range wp.workers {
