@@ -17,12 +17,20 @@ wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 
 2. 可以设置延迟任务
 3. 可以设置唯一任务
 4. 可以设置 cron 任务
-5. 可以进行总并发量, 可以在总并发量之下, 控制单个任务并发
+5. 可以进行总并发量控制, 同时可以在总并发量之下, 控制单个任务并发
 6. 任务错误重试
 7. 重试过多后, 可查看死亡任务, 或者可以手动重新投递
 8. 拥有一个 UI 界面可查看内部执行情况
 9. 任务可以拥有优先级
 
+### Event 的涵盖的功能
+1. 通过 RabbitMQ 以及纯粹自定义的 JSON Format message, 进行分布式任务处理
+2. 可以设置延迟的 event 消息处理, 由 RabbitMQ 负责.
+3. 可以进行总并发量控制, 同时可以在总并发量之下, 控制单个 Consumer 的并发
+4. Event 消息处理失败后重试. RabbitMQ 负责信息记录.
+5. Event 消息失败过多后进入 Dead 队列. (非 RabbitMQ 的 DLX, 仅仅是 Dead 队列)
+6. 利用 RabbitMQ 的 UI 面板查看任务处理情况以及速度
+7. 利用 RabbitMQ 的特性实现不同 Event 的优先级. (暂未实现)
 
 ### 现在的开源的后端任务项目介绍
 下面列举了不同的后端任务/消息处理的框架, 可以根据需要进行选择
@@ -33,8 +41,8 @@ wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 
 | [go-workers](https://github.com/jrallison/go-workers) | redis | golang 运行, 兼容 Sidekiq 消息格式 |
 | [iamduo/workq](https://github.com/iamduo/workq)| self server | golang 运行, 独立的后端任务系统 |
 | [gocelery](https://github.com/gocelery/gocelery) | redis, rabbitmq | golang 运行, 兼容 Celery 消息格式 |
-| [hutch](https://github.com/gocardless/hutch) | rabbitmq | ruby 运行, 纯粹 json 消息格式 |
-| [wppurking/event](https://github.com/wppurking/event) | rabbitmq | golang 运行, 纯粹 json 消息格式 |
+| [hutch](https://github.com/gocardless/hutch) | rabbitmq | ruby 运行, *纯粹 json 消息格式* |
+| [wppurking/event](https://github.com/wppurking/event) | rabbitmq | golang 运行, *纯粹 json 消息格式* |
 
 
 
