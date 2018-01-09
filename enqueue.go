@@ -137,6 +137,5 @@ func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) error {
 	if secondsFromNow > 0 {
 		msg.pub.Expiration = strconv.Itoa(int(secondsFromNow * 1000))
 	}
-	fmt.Println("EnqueueInJob:", msg.pub, "fails:", job.Fails(), "delay:", secondsFromNow, "s")
 	return e.schePub.PublishWithRoutingKey(msg.pub, msg.routingKey)
 }
