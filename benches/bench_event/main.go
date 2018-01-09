@@ -8,15 +8,15 @@ import (
 
 	"github.com/assembla/cony"
 	"github.com/gocraft/health"
-	"github.com/wppurking/work"
+	"github.com/wppurking/event"
 )
 
 var namespace = "bench_test"
-var enq *work.Publisher
+var enq *event.Publisher
 
 type context struct{}
 
-func epsilonHandler(job *work.Message) error {
+func epsilonHandler(job *event.Message) error {
 	//fmt.Println("hi")
 	//a := job.Args[0]
 	//fmt.Printf("job: %s arg: %v\n", job.Name, a)
@@ -30,7 +30,7 @@ func main() {
 	numJobs := 10
 	jobNames := []string{}
 	rabbitMqURL := "amqp://guest:guest@localhost:5672/ajd"
-	enq = work.NewPublisher(namespace, cony.URL(rabbitMqURL))
+	enq = event.NewPublisher(namespace, cony.URL(rabbitMqURL))
 
 	for i := 0; i < numJobs; i++ {
 		jobNames = append(jobNames, fmt.Sprintf("job%d", i))
@@ -40,7 +40,7 @@ func main() {
 	enqueueJobs(jobNames, 10000)
 	job.Complete(health.Success)
 
-	workerPool := work.NewWorkerPool(context{}, 20,
+	workerPool := event.NewWorkerPool(context{}, 20,
 		namespace, enq, cony.URL(rabbitMqURL))
 	for _, jobName := range jobNames {
 		workerPool.Consumer(jobName, epsilonHandler)
@@ -89,7 +89,7 @@ DALOOP:
 func enqueueJobs(jobs []string, count int) {
 	for _, jobName := range jobs {
 		for i := 0; i < count; i++ {
-			enq.Publish(jobName, work.Q{"i": i})
+			enq.Publish(jobName, event.Q{"i": i})
 		}
 	}
 }

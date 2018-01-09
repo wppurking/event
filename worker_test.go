@@ -1,4 +1,4 @@
-package work
+package event
 
 /*
 func TestWorkerBasics(t *testing.T) {

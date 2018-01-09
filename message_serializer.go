@@ -1,4 +1,4 @@
-package work
+package event
 
 // 准备将传递的消息, 充分利用 RabbitMQ 中的消息, 让 message 只保留 json
 import (

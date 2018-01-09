@@ -1,146 +1,49 @@
-# gocraft/work [![GoDoc](https://godoc.org/github.com/gocraft/work?status.png)](https://godoc.org/github.com/gocraft/work)
+# wppurking/event [![GoDoc](https://godoc.org/github.com/wppurking/event?status.png)](https://godoc.org/github.com/wppurking/event)
 
-gocraft/work lets you enqueue and processes background jobs in Go. Jobs are durable and backed by Redis. Very similar to Sidekiq for Go.
+wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 虽然可以涵盖部分 background job 的范畴, 但其核心为
+尽可能的利用 RabbitMQ 本身的特性用于处理 JSON 格式的 Message 消息. 代码 fork 自 [gocraft/work](https://github.com/gocraft/work), 并且受到
+ [Hutch](https://github.com/gocardless/hutch) 与 [Hutch-schedule](https://github.com/wppurking/hutch-schedule) 的影响.
 
 * Fast and efficient. Faster than [this](https://www.github.com/jrallison/go-workers), [this](https://www.github.com/benmanns/goworker), and [this](https://www.github.com/albrow/jobs). See below for benchmarks.
-* Reliable - don't lose jobs even if your process crashes.
-* Middleware on jobs -- good for metrics instrumentation, logging, etc.
-* If a job fails, it will be retried a specified number of times.
-* Schedule jobs to happen in the future.
-* Enqueue unique jobs so that only one job with a given name/arguments exists in the queue at once.
-* Web UI to manage failed jobs and observe the system.
-* Periodically enqueue jobs on a cron-like schedule.
-* Pause / unpause jobs and control concurrency within and across processes
+* Reliable - don't lose event even if your process crashes. [rabbitmq ack, dlx, ttl]
+* Middleware on events -- good for metrics instrumentation, logging, etc.
+* If a event fails, it will be retried a specified number of times.
+* Schedule event to happen in the future.
+* Control concurrency within and across processes
+
+## Tips
+### 后端任务需要的功能
+1. 某种后端消息格式, 通过一稳定后端中间件进行分布式的任务处理
+2. 可以设置延迟任务
+3. 可以设置唯一任务
+4. 可以设置 cron 任务
+5. 可以进行总并发量, 可以在总并发量之下, 控制单个任务并发
+6. 任务错误重试
+7. 重试过多后, 可查看死亡任务, 或者可以手动重新投递
+8. 拥有一个 UI 界面可查看内部执行情况
+9. 任务可以拥有优先级
+
+
+### 现在的开源的后端任务项目介绍
+下面列举了不同的后端任务/消息处理的框架, 可以根据需要进行选择
+ 
+| 产品 | 后端 | 描述 |
+| --- | --- | --- |
+| [gocraft/work](https://github.com/gocraft/work) | redis | golang 独立运行. 功能完备 |
+| [go-workers](https://github.com/jrallison/go-workers) | redis | golang 运行, 兼容 Sidekiq 消息格式 |
+| [iamduo/workq](https://github.com/iamduo/workq)| self server | golang 运行, 独立的后端任务系统 |
+| [gocelery](https://github.com/gocelery/gocelery) | redis, rabbitmq | golang 运行, 兼容 Celery 消息格式 |
+| [hutch](https://github.com/gocardless/hutch) | rabbitmq | ruby 运行, 纯粹 json 消息格式 |
+| [wppurking/event](https://github.com/wppurking/event) | rabbitmq | golang 运行, 纯粹 json 消息格式 |
+
+
+
 
 ## Enqueue new jobs
-
-To enqueue jobs, you need to make an Enqueuer with a redis namespace and a redigo pool. Each enqueued job has a name and can take optional arguments. Arguments are k/v pairs (serialized as JSON internally).
-
-```go
-package main
-
-import (
-	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
-)
-
-// Make a redis pool
-var redisPool = &redis.Pool{
-	MaxActive: 5,
-	MaxIdle: 5,
-	Wait: true,
-	Dial: func() (redis.Conn, error) {
-		return redis.Dial("tcp", ":6379")
-	},
-}
-
-// Make an enqueuer with a particular namespace
-var enqueuer = work.NewEnqueuer("my_app_namespace", redisPool)
-
-func main() {
-	// Enqueue a job named "send_email" with the specified parameters.
-	_, err := enqueuer.Enqueue("send_email", work.Q{"address": "test@example.com", "subject": "hello world", "customer_id": 4})
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-
-```
+TBD
 
 ## Process jobs
-
-In order to process jobs, you'll need to make a WorkerPool. Add middleware and jobs to the pool, and start the pool.
-
-```go
-package main
-
-import (
-	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
-	"os"
-	"os/signal"
-)
-
-// Make a redis pool
-var redisPool = &redis.Pool{
-	MaxActive: 5,
-	MaxIdle: 5,
-	Wait: true,
-	Dial: func() (redis.Conn, error) {
-		return redis.Dial("tcp", ":6379")
-	},
-}
-
-type Context struct{
-    customerID int64
-}
-
-func main() {
-	// Make a new pool. Arguments:
-	// Context{} is a struct that will be the context for the request.
-	// 10 is the max concurrency
-	// "my_app_namespace" is the Redis namespace
-	// redisPool is a Redis pool
-	pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
-
-	// Add middleware that will be executed for each job
-	pool.Middleware((*Context).Log)
-	pool.Middleware((*Context).FindCustomer)
-
-	// Map the name of jobs to handler functions
-	pool.Job("send_email", (*Context).SendEmail)
-
-	// Customize options:
-	pool.JobWithOptions("export", work.JobOptions{Priority: 10, MaxFails: 1}, (*Context).Export)
-
-	// Start processing jobs
-	pool.Start()
-
-	// Wait for a signal to quit:
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, os.Kill)
-	<-signalChan
-
-	// Stop the pool
-	pool.Stop()
-}
-
-func (c *Context) Log(job *work.Job, next work.NextMiddlewareFunc) error {
-	fmt.Println("Starting job: ", job.Name)
-	return next()
-}
-
-func (c *Context) FindCustomer(job *work.Job, next work.NextMiddlewareFunc) error {
-	// If there's a customer_id param, set it in the context for future middleware and handlers to use.
-	if _, ok := job.Args["customer_id"]; ok {
-		c.customerID = job.ArgInt64("customer_id")
-		if err := job.ArgError(); err != nil {
-			return err
-		}
-	}
-
-	return next()
-}
-
-func (c *Context) SendEmail(job *work.Job) error {
-	// Extract arguments:
-	addr := job.ArgString("address")
-	subject := job.ArgString("subject")
-	if err := job.ArgError(); err != nil {
-		return err
-	}
-
-	// Go ahead and send the email...
-	// sendEmailTo(addr, subject)
-
-	return nil
-}
-
-func (c *Context) Export(job *work.Job) error {
-	return nil
-}
-```
+TBD
 
 ## Special Features
 
@@ -151,29 +54,7 @@ Just like in [gocraft/web](https://www.github.com/gocraft/web), gocraft/work let
 Custom contexts aren't really needed for trivial example applications, but are very important for production apps. For instance, one field in your context can be your tagged logger. Your tagged logger augments your log statements with a job-id. This lets you filter your logs by that job-id.
 
 ### Check-ins
-
-Since this is a background job processing library, it's fairly common to have jobs that that take a long time to execute. Imagine you have a job that takes an hour to run. It can often be frustrating to know if it's hung, or about to finish, or if it has 30 more minutes to go.
-
-To solve this, you can instrument your jobs to "checkin" every so often with a string message. This checkin status will show up in the web UI. For instance, your job could look like this:
-
-```go
-func (c *Context) Export(job *work.Job) error {
-	rowsToExport := getRows()
-	for i, row := range rowsToExport {
-		exportRow(row)
-		if i % 1000 == 0 {
-			job.Checkin("i=" + fmt.Sprint(i))   // Here's the magic! This tells gocraft/work our status
-		}
-	}
-}
-
-```
-
-Then in the web UI, you'll see the status of the worker:
-
-| Name | Arguments | Started At | Check-in At | Check-in |
-| --- | --- | --- | --- | --- |
-| export | {"account_id": 123} | 2016/07/09 04:16:51 | 2016/07/09 05:03:13 | i=335000 |
+无内容
 
 ### Scheduled Jobs
 
@@ -186,15 +67,9 @@ _, err := enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"a
 ```
 
 ### Unique Jobs
-
-You can enqueue unique jobs so that only one job with a given name/arguments exists in the queue at once. For instance, you might have a worker that expires the cache of an object. It doesn't make sense for multiple such jobs to exist at once. Also note that unique jobs are supported for normal enqueues as well as scheduled enqueues.
-
-```go
-enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
-job, err := enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // job returned
-job, err = enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // job == nil -- this duplicate job isn't enqueued.
-job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "789"}) // job != nil (diff id)
-```
+当前设计为 Event 的消息处理框架, 而不是后端任务, 同时 RabbitMQ 在集群环境下也无法保证消息的唯一. 所以:
+1. 如果需要消息唯一, 请在用户端进行处理. 例如将状态记录在 DB.
+2. 将 event 的消息处理设计成为等幂处理, 多次执行得到同样的结果.
 
 ### Periodic Enqueueing (Cron)
 当前设计为 Event 的消息处理框架, 而不是后端任务, 所以取消 cron 任务注册
@@ -249,24 +124,6 @@ job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "78
 
 * If a process crashes hard (eg, the power on the server turns off or the kernal freezes), some jobs may be in progress and we won't want to lose them. They're safe in their in-progress queue.
 * The reaper will look for worker pools without a heartbeat. It will scan their in-progress queues and requeue anything it finds.
-
-### Unique jobs
-
-* You can enqueue unique jobs such that a given name/arguments are on the queue at once.
-* Both normal queues and the scheduled queue are considered.
-* When a unique job is enqueued, we'll atomically set a redis key that includes the job name and arguments and enqueue the job.
-* When the job is processed, we'll delete that key to permit another job to be enqueued.
-
-### Periodic jobs
-
-* You can tell a worker pool to enqueue jobs periodically using a cron schedule.
-* Each worker pool will wake up every 2 minutes, and if jobs haven't been scheduled yet, it will schedule all the jobs that would be executed in the next five minutes.
-* Each periodic job that runs at a given time has a predictable byte pattern. Since jobs are scheduled on the scheduled job queue (a Redis z-set), if the same job is scheduled twice for a given time, it can only exist in the z-set once.
-
-## Paused jobs
-
-* You can pause jobs from being processed from a specific queue by setting a "paused" redis key (see `redisKeyJobsPaused`)
-* Conversely, jobs in the queue will resume being processed once the paused redis key is removed
 
 ## Job concurrency
 
