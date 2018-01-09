@@ -22,7 +22,10 @@ func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.
 	// dead queue: 不需要 consumer, 由 rabbitmq 自行过期处理
 	// - 消息超过 30 天放弃
 	// - 超过 10w 条消息放弃
-	deadQue := buildConyQueue(withNS(ns, deadQueue), amqp.Table{"x-message-ttl": oneMonth, "x-max-length": 100000})
+	deadQue := buildConyQueue(
+		withNS(ns, deadQueue),
+		amqp.Table{"x-message-ttl": oneMonth, "x-max-length": int64(100000)},
+	)
 	deadBnd := cony.Binding{Queue: deadQue, Exchange: exc, Key: deadQueue + ".#"}
 
 	cli.Declare([]cony.Declaration{
