@@ -9,13 +9,20 @@ import (
 func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.Client) {
 	// 30 * 24 * 3600  * 1000
 	oneMonth := int64(2592000000)
+
 	// retry queue: 不需要 consumer, 由 rabbitmq 的 ddl 自行处理
-	retryQue := buildConyQueue(withNS(ns, retryQueue),
-		amqp.Table{"x-message-ttl": oneMonth, "x-dead-letter-exchange": exc.Name})
+	// - 最长超过 30 天重新投递
+	// - 重新投递到默认的 exchange
+	retryQue := buildConyQueue(
+		withNS(ns, retryQueue),
+		amqp.Table{"x-message-ttl": oneMonth, "x-dead-letter-exchange": exc.Name},
+	)
 	retryBnd := cony.Binding{Queue: retryQue, Exchange: schExc, Key: "#"}
 
 	// dead queue: 不需要 consumer, 由 rabbitmq 自行过期处理
-	deadQue := buildConyQueue(withNS(ns, deadQueue), amqp.Table{"x-message-ttl": oneMonth})
+	// - 消息超过 30 天放弃
+	// - 超过 10w 条消息放弃
+	deadQue := buildConyQueue(withNS(ns, deadQueue), amqp.Table{"x-message-ttl": oneMonth, "x-max-length": 100000})
 	deadBnd := cony.Binding{Queue: deadQue, Exchange: exc, Key: deadQueue + ".#"}
 
 	cli.Declare([]cony.Declaration{
