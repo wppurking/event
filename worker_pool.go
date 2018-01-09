@@ -13,23 +13,21 @@ import (
 
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
 type WorkerPool struct {
-	workerPoolID string
-	concurrency  uint
-	namespace    string // eg, "myapp-work"
-	cli          *cony.Client
-	defaultExc   cony.Exchange
-	scheduleExc  cony.Exchange
-	enqueuer     *Publisher // workPool 内部的消息发送器
+	workerPoolID string        // 当前 workerPool 的 ID
+	concurrency  uint          // 拥有的 workers 的总并发数量
+	namespace    string        // eg, "myapp-work"
+	cli          *cony.Client  // cony 的客户端, 用于保持连接
+	defaultExc   cony.Exchange // 默认发送消息的 exchange
+	scheduleExc  cony.Exchange // 用于处理 schedule 消息的 exchange
+	enqueuer     *Publisher    // workPool 内部的消息发送器
 
-	contextType   reflect.Type
-	consumerTypes map[string]*consumerType
-	consumers     map[string]*consumer
-	middleware    []*middlewareHandler
-	started       bool
-
-	opts    []cony.ClientOpt // 记录下 cony.Client 需要的参数
-	workers []*worker
-	//heartbeater      *workerPoolHeartbeater
+	contextType   reflect.Type             // 处理 Message 时候的 Context 类型
+	consumerTypes map[string]*consumerType // 通过 routingKey 关联的某一个 consumer 的具体实现的 ConsumerType
+	consumers     map[string]*consumer     // 与 RabbitMQ 保持联系的 Consumer
+	middleware    []*middlewareHandler     // WorkPool 中的 middelware 中间层
+	started       bool                     // WorkPool 是否已经启动
+	opts          []cony.ClientOpt         // 记录下 cony.Client 需要的参数
+	workers       []*worker                // WorkPool 所管理的所有 Workers
 }
 
 // You may provide your own backoff function for retrying failed jobs or use the builtin one.

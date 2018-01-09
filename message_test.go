@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type TestContext struct{}
+
 // 从 amqp.Table 中获取的值, 是有值的白名单的
 func TestXdeathHeader(t *testing.T) {
 	/**
