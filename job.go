@@ -1,6 +1,8 @@
 package work
 
 import (
+	"strings"
+
 	"github.com/json-iterator/go"
 	"github.com/streadway/amqp"
 )
@@ -14,12 +16,11 @@ type Job struct {
 	Args       map[string]interface{} `json:"args"`
 	Unique     bool                   `json:"unique,omitempty"`
 
-	rawJSON      []byte            `json:"-"`
-	dequeuedFrom []byte            `json:"-"`
-	inProgQueue  []byte            `json:"-"`
-	argError     error             `json:"-"`
-	msg          *amqp.Delivery    `json:"-"`
-	ack          func(ev ackEvent) `json:"-"` // ack 的行动
+	fails    int64             `json:"-"`
+	rawJSON  []byte            `json:"-"`
+	argError error             `json:"-"`
+	msg      *amqp.Delivery    `json:"-"`
+	ack      func(ev ackEvent) `json:"-"` // ack 的行动
 }
 
 // Q is a shortcut to easily specify arguments for jobs when enqueueing them.
@@ -64,6 +65,43 @@ func (j *Job) Reject() bool {
 
 func (j *Job) serialize() ([]byte, error) {
 	return jsoniter.Marshal(j)
+}
+
+func (j *Job) Fails() int64 {
+	// refs: https://github.com/wppurking/hutch-schedule/blob/master/lib/hutch/error_handlers/max_retry.rb
+	//map[x-death:[map[exchange:work.work.schedule routing-keys:[foobar] original-expiration:64000 count:1 reason:expired queue:work._retry time:2018-01-09 00:01:43 +0800 CST]]]
+
+	if j.fails > 0 {
+		return j.fails
+	}
+
+	deathsMap, ok := j.msg.Headers["x-death"]
+	if !ok {
+		return 0
+	}
+
+	if deaths, ok := deathsMap.([]map[string]interface{}); ok {
+		// 解析出所有的 x-dead
+		var xDeathArray []map[string]interface{}
+		for _, death := range deaths {
+			for _, rk := range death["routing-keys"].([]string) {
+				if strings.ToLower(rk) != j.Name {
+					continue
+				}
+				xDeathArray = append(xDeathArray, death)
+			}
+		}
+
+		var c int64 = 0
+		for _, xDeath := range xDeathArray {
+			if cd, ok := xDeath["count"].(int64); ok {
+				c += cd
+			}
+		}
+		j.fails = c
+		return j.fails
+	}
+	return 0
 }
 
 func (j *Job) failed(err error) {
