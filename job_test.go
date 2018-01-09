@@ -67,9 +67,9 @@ func TestXdeathHeader(t *testing.T) {
 	}
 
 	// 三个 amqp.Table 需要符合约束
-	for _, it := range []amqp.Table{tb, tb2, tb3} {
-		assert.NoError(t, it.Validate())
-	}
+	assert.NoError(t, tb.Validate())
+	assert.NoError(t, tb2.Validate())
+	assert.NoError(t, tb3.Validate())
 
 	j := Job{
 		Name: "foobar",

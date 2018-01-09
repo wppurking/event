@@ -197,35 +197,7 @@ job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "78
 ```
 
 ### Periodic Enqueueing (Cron)
-
-You can periodically enqueue jobs on your gocraft/work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
-
-```go
-pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
-pool.PeriodicallyEnqueue("0 0 * * * *", "calculate_caches") // This will enqueue a "calculate_caches" job every hour
-pool.Job("calculate_caches", (*Context).CalculateCaches) // Still need to register a handler for this job separately
-```
-
-## Run the Web UI
-
-The web UI provides a view to view the state of your gocraft/work cluster, inspect queued jobs, and retry or delete dead jobs.
-
-Building an installing the binary:
-```bash
-go get github.com/gocraft/work/cmd/workwebui
-go install github.com/gocraft/work/cmd/workwebui
-```
-
-Then, you can run it:
-```bash
-workwebui -redis="redis:6379" -ns="work" -listen=":5040"
-```
-
-Navigate to ```http://localhost:5040/```.
-
-You'll see a view that looks like this:
-
-![Web UI Screenshot](https://gocraft.github.io/work/images/webui.png)
+当前设计为 Event 的消息处理框架, 而不是后端任务, 所以取消 cron 任务注册
 
 ## Design and concepts
 
@@ -354,3 +326,4 @@ These packages were developed by the [engineering team](https://eng.uservoice.co
 * Jonathan Novak -- [https://github.com/cypriss](https://github.com/cypriss)
 * Tai-Lin Chu -- [https://github.com/taylorchu](https://github.com/taylorchu)
 * Sponsored by [UserVoice](https://eng.uservoice.com)
+* Wyatt Pan [https://github.com/wppurking](https://github.com/wppurking)

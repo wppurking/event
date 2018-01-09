@@ -5,6 +5,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const (
+	retryQueue = "_retry"
+	deadQueue  = "_dead"
+)
+
 // 构建内置的 retry 与 dead queue
 func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.Client) {
 	// 30 * 24 * 3600  * 1000
