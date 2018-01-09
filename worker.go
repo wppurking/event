@@ -98,7 +98,7 @@ func (w *worker) loop() {
 				logError("worker.fetch", err)
 				timer.Reset(10 * time.Millisecond)
 			} else if job != nil {
-				w.processJob(job)
+				w.processMsg(job)
 				consequtiveNoMsgs = 0
 				timer.Reset(0)
 			} else {
@@ -124,32 +124,32 @@ func (w *worker) fetchMsg() (*Message, error) {
 		if jt, ok := w.consumerTypes[n]; ok && jt.MaxConcurrency > 0 && jt.Runs() >= jt.MaxConcurrency {
 			continue
 		}
-		job, err := c.Peek()
+		msg, err := c.Peek()
 		if err != nil {
 			return nil, err
 		}
-		if job != nil {
-			return job, nil
+		if msg != nil {
+			return msg, nil
 		}
 	}
 	return nil, nil
 }
 
-func (w *worker) processJob(job *Message) {
-	if jt, ok := w.consumerTypes[job.Name]; ok {
+func (w *worker) processMsg(msg *Message) {
+	if jt, ok := w.consumerTypes[msg.Name]; ok {
 		jt.incr()
 		// TODO 需要增加任务执行的 mertic
-		_, runErr := runJob(job, w.contextType, w.middleware, jt)
+		_, runErr := runJob(msg, w.contextType, w.middleware, jt)
 		if runErr != nil {
-			w.addToRetryOrDead(jt, job, runErr)
+			w.addToRetryOrDead(jt, msg, runErr)
 		}
 		jt.decr()
-		job.Ack()
+		msg.Ack()
 	} else {
 		// NOTE: since we don't have a consumerType, we don't know max retries
-		runErr := fmt.Errorf("stray job: no handler")
+		runErr := fmt.Errorf("stray msg: no handler")
 		logError("process_job.stray", runErr)
-		w.addToDead(job, runErr)
+		w.addToDead(msg, runErr)
 	}
 }
 
