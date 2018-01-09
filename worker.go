@@ -129,7 +129,6 @@ func (w *worker) fetchJob() (*Job, error) {
 			return nil, err
 		}
 		if job != nil {
-			fmt.Println("fetch Job:", job, "delivery:", *job.Delivery)
 			return job, nil
 		}
 	}
@@ -187,6 +186,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 func (w *worker) addToDead(job *Job, runErr error) {
 	// TODO: 需要考虑如何解决死信队列的重新激活问题
 	job.Name = fmt.Sprintf("%s.%s", deadQueue, job.Name)
+	job.nonPersistent = true
 	err := w.enqueuer.EnqueueJob(job)
 	if err != nil {
 		logError("worker.add_to_dead.serialize", err)

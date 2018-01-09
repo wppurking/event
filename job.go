@@ -12,10 +12,11 @@ type Job struct {
 	*amqp.Delivery `json:"-"`
 
 	// Inputs when making a new job
-	Name     string            `json:"-"`
-	fails    int64             `json:"-"`
-	argError error             `json:"-"`
-	ack      func(ev ackEvent) `json:"-"` // ack 的行动
+	Name          string            `json:"-"`
+	fails         int64             `json:"-"`
+	argError      error             `json:"-"`
+	ack           func(ev ackEvent) `json:"-"` // ack 的行动
+	nonPersistent bool              `json:"-"` // 是否持久化
 }
 
 // Q is a shortcut to easily specify arguments for jobs when enqueueing them.
@@ -53,8 +54,6 @@ func (j *Job) serialize() ([]byte, error) {
 // Fails 返回从 x-dead header 信息中记录的重试记录
 func (j *Job) Fails() int64 {
 	// refs: https://github.com/wppurking/hutch-schedule/blob/master/lib/hutch/error_handlers/max_retry.rb
-	//map[x-death:[map[exchange:work.work.schedule routing-keys:[foobar] original-expiration:64000 count:1 reason:expired queue:work._retry time:2018-01-09 00:01:43 +0800 CST]]]
-
 	if j.fails > 0 {
 		return j.fails
 	}
@@ -64,25 +63,32 @@ func (j *Job) Fails() int64 {
 		return 0
 	}
 
-	if deaths, ok := deathsMap.([]map[string]interface{}); ok {
+	if deaths, ok := deathsMap.([]interface{}); ok {
 		// 解析出所有的 x-dead
-		var xDeathArray []map[string]interface{}
+		var xDeathArray []amqp.Table
 		for _, death := range deaths {
-			for _, rk := range death["routing-keys"].([]string) {
-				// Fixme: 这里需要获取到 workPool 的 Namespace 才能做 100% 匹配, 现在只能做 routing_key 的包含匹配
-				if len(j.Name) > 0 && strings.Contains(strings.ToLower(rk), j.Name) {
-					xDeathArray = append(xDeathArray, death)
+			if dt, ok := death.(amqp.Table); ok {
+				for _, rk := range dt["routing-keys"].([]interface{}) {
+					// Fixme: 这里需要获取到 workPool 的 Namespace 才能做 100% 匹配, 现在只能做 routing_key 的包含匹配
+					if len(j.Name) > 0 && strings.Contains(strings.ToLower(rk.(string)), j.Name) {
+						xDeathArray = append(xDeathArray, dt)
+					}
 				}
 			}
 		}
 
-		c := 0
+		var c int64 = 0
 		for _, xDeath := range xDeathArray {
-			if cd, ok := xDeath["count"].(int); ok {
+			// amqp.Table 中的 count 支持下面几种 int
+			if cd, ok := xDeath["count"].(int64); ok {
 				c += cd
+			} else if cd, ok := xDeath["count"].(int32); ok {
+				c += int64(cd)
+			} else if cd, ok := xDeath["count"].(int16); ok {
+				c += int64(cd)
 			}
 		}
-		j.fails = int64(c)
+		j.fails = c
 		return j.fails
 	}
 	return 0

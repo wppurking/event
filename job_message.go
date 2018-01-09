@@ -25,6 +25,10 @@ func (j *Job) encode() (*message, error) {
 		ContentType:  "application/json",
 		Timestamp:    j.Timestamp,
 	}
+	// 如果不需要持久化, 那么则只在内存中出现
+	if j.nonPersistent {
+		p.DeliveryMode = 1
+	}
 	return &message{
 		pub:        p,
 		routingKey: j.Name,
@@ -37,5 +41,6 @@ func decodeJob(msg *amqp.Delivery, ack func(ev ackEvent)) *Job {
 		Name:     strings.ToLower(msg.RoutingKey),
 		Delivery: msg,
 		ack:      ack,
+		fails:    0, // 强制清零, 让后续的 job.Fails 方法 lazy 计算并缓存
 	}
 }
