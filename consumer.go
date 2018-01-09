@@ -9,7 +9,7 @@ import (
 // * 获取 Message
 // * Ack/Nack message
 type consumer struct {
-	jt        *jobType
+	ct        *consumerType
 	exc       cony.Exchange
 	namespace string
 
@@ -27,12 +27,12 @@ type ackEvent struct {
 }
 
 // 根据参数创建一个新的 consumer
-func newConsumer(namespace string, jt *jobType, exc cony.Exchange) *consumer {
+func newConsumer(namespace string, jt *consumerType, exc cony.Exchange) *consumer {
 	que := buildConyQueue(withNS(namespace, jt.Name), nil)
 
 	return &consumer{
 		namespace:    namespace,
-		jt:           jt,
+		ct:           jt,
 		exc:          exc,
 		ackDeliveies: make(chan ackEvent, 500),
 		done:         make(chan int, 1),
@@ -42,8 +42,8 @@ func newConsumer(namespace string, jt *jobType, exc cony.Exchange) *consumer {
 
 func (c *consumer) prefetch() int {
 	prefetch := 20
-	if c.jt != nil {
-		prefetch = c.jt.Prefetch
+	if c.ct != nil {
+		prefetch = c.ct.Prefetch
 	}
 	// prefetch 必须大于 0, 不可以无限制
 	if prefetch <= 0 {
@@ -55,8 +55,8 @@ func (c *consumer) prefetch() int {
 // 返回需要进行 Declare 的内容. Queue 与 binding 的 Declear
 func (c *consumer) Declares() (ds []cony.Declaration) {
 	ds = append(ds, cony.DeclareQueue(c.que))
-	if c.jt != nil && len(c.jt.Name) > 0 {
-		ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.jt.Name}))
+	if c.ct != nil && len(c.ct.Name) > 0 {
+		ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.ct.Name}))
 	}
 	return ds
 }

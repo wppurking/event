@@ -22,7 +22,7 @@ type WorkerPool struct {
 	enqueuer     *Enqueuer // workPool 内部的消息发送器
 
 	contextType reflect.Type
-	jobTypes    map[string]*jobType
+	jobTypes    map[string]*consumerType
 	consumers   map[string]*consumer
 	middleware  []*middlewareHandler
 	started     bool
@@ -61,7 +61,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 		enqueuer:     enqueuer,
 		opts:         defaultOpts,
 		contextType:  ctxType,
-		jobTypes:     make(map[string]*jobType),
+		jobTypes:     make(map[string]*consumerType),
 		consumers:    make(map[string]*consumer),
 	}
 	wp.cli = cony.NewClient(wp.opts...)
@@ -120,7 +120,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	n := strings.ToLower(name)
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
-	jt := &jobType{
+	jt := &consumerType{
 		Name:           n,
 		DynamicHandler: vfn,
 		JobOptions:     jobOpts,

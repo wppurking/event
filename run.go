@@ -7,7 +7,7 @@ import (
 
 // returns an error if the job fails, or there's a panic, or we couldn't reflect correctly.
 // if we return an error, it signals we want the job to be retried.
-func runJob(job *Message, ctxType reflect.Type, middleware []*middlewareHandler, jt *jobType) (returnCtx reflect.Value, returnError error) {
+func runJob(job *Message, ctxType reflect.Type, middleware []*middlewareHandler, jt *consumerType) (returnCtx reflect.Value, returnError error) {
 	returnCtx = reflect.New(ctxType)
 	currentMiddleware := 0
 	maxMiddleware := len(middleware)

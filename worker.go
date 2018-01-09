@@ -12,7 +12,7 @@ type worker struct {
 	enqueuer    *Enqueuer
 	poolID      string
 	namespace   string
-	jobTypes    map[string]*jobType
+	jobTypes    map[string]*consumerType
 	consumers   map[string]*consumer
 	middleware  []*middlewareHandler
 	contextType reflect.Type
@@ -26,7 +26,7 @@ type worker struct {
 
 func newWorker(namespace string, poolID string, contextType reflect.Type,
 	middleware []*middlewareHandler, enqueuer *Enqueuer,
-	jobTypes map[string]*jobType, consumers map[string]*consumer) *worker {
+	jobTypes map[string]*consumerType, consumers map[string]*consumer) *worker {
 	workerID := makeIdentifier()
 
 	w := &worker{
@@ -49,7 +49,7 @@ func newWorker(namespace string, poolID string, contextType reflect.Type,
 }
 
 // note: can't be called while the thing is started
-func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*jobType, consumers map[string]*consumer) {
+func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*consumerType, consumers map[string]*consumer) {
 	w.middleware = middleware
 	w.jobTypes = jobTypes
 	w.consumers = consumers
@@ -146,14 +146,14 @@ func (w *worker) processJob(job *Message) {
 		jt.decr()
 		job.Ack()
 	} else {
-		// NOTE: since we don't have a jobType, we don't know max retries
+		// NOTE: since we don't have a consumerType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
 		w.addToDead(job, runErr)
 	}
 }
 
-func (w *worker) addToRetryOrDead(jt *jobType, job *Message, runErr error) {
+func (w *worker) addToRetryOrDead(jt *consumerType, job *Message, runErr error) {
 	failsRemaining := int64(jt.MaxFails) - job.Fails()
 	if failsRemaining > 0 {
 		w.addToRetry(job, runErr)

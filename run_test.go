@@ -38,7 +38,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 		{IsGeneric: false, DynamicMiddleware: reflect.ValueOf(mw3)},
 	}
 
-	jt := &jobType{
+	ct := &consumerType{
 		Name:           "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
@@ -49,7 +49,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 		Args: map[string]interface{}{"a": "foo"},
 	}
 
-	v, err := runJob(job, tstCtxType, middleware, jt)
+	v, err := runJob(job, tstCtxType, middleware, ct)
 	assert.NoError(t, err)
 	c := v.Interface().(*tstCtx)
 	assert.Equal(t, "mw1mw2mw3h1foo", c.String())
@@ -69,7 +69,7 @@ func TestRunHandlerError(t *testing.T) {
 		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
-	jt := &jobType{
+	jt := &consumerType{
 		Name:           "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
@@ -100,7 +100,7 @@ func TestRunMwError(t *testing.T) {
 		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
-	jt := &jobType{
+	jt := &consumerType{
 		Name:           "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
@@ -129,7 +129,7 @@ func TestRunHandlerPanic(t *testing.T) {
 		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
-	jt := &jobType{
+	jt := &consumerType{
 		Name:           "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
@@ -157,7 +157,7 @@ func TestRunMiddlewarePanic(t *testing.T) {
 		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
-	jt := &jobType{
+	jt := &consumerType{
 		Name:           "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),

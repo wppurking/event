@@ -21,7 +21,7 @@ func TestEnqueue(t *testing.T) {
 	ns := "work"
 	name := "wat"
 	enqueuer := NewEnqueuer(ns, clientOpts()...)
-	cn := newConsumer(enqueuer.Namespace, &jobType{Name: name}, enqueuer.defaultExc)
+	cn := newConsumer(enqueuer.Namespace, &consumerType{Name: name}, enqueuer.defaultExc)
 	cn.start(enqueuer.cli)
 
 	job, err := enqueuer.Enqueue(name, Q{"a": 1, "b": "cool"})

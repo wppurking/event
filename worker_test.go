@@ -12,8 +12,8 @@ func TestWorkerBasics(t *testing.T) {
 	var arg2 float64
 	var arg3 float64
 
-	jobTypes := make(map[string]*jobType)
-	jobTypes[job1] = &jobType{
+	jobTypes := make(map[string]*consumerType)
+	jobTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -22,7 +22,7 @@ func TestWorkerBasics(t *testing.T) {
 			return nil
 		},
 	}
-	jobTypes[job2] = &jobType{
+	jobTypes[job2] = &consumerType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -31,7 +31,7 @@ func TestWorkerBasics(t *testing.T) {
 			return nil
 		},
 	}
-	jobTypes[job3] = &jobType{
+	jobTypes[job3] = &consumerType{
 		Name:       job3,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -84,8 +84,8 @@ func TestWorkerInProgress(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*jobType)
-	jobTypes[job1] = &jobType{
+	jobTypes := make(map[string]*consumerType)
+	jobTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
@@ -137,8 +137,8 @@ func TestWorkerRetry(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*jobType)
-	jobTypes[job1] = &jobType{
+	jobTypes := make(map[string]*consumerType)
+	jobTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
 		IsGeneric:  true,
@@ -189,8 +189,8 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 		return 5 // Always 5 seconds
 	}
 
-	jobTypes := make(map[string]*jobType)
-	jobTypes[job1] = &jobType{
+	jobTypes := make(map[string]*consumerType)
+	jobTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
 		IsGeneric:  true,
@@ -236,8 +236,8 @@ func TestWorkerDead(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*jobType)
-	jobTypes[job1] = &jobType{
+	jobTypes := make(map[string]*consumerType)
+	jobTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
 		IsGeneric:  true,
@@ -245,7 +245,7 @@ func TestWorkerDead(t *testing.T) {
 			return fmt.Errorf("sorry kid1")
 		},
 	}
-	jobTypes[job2] = &jobType{
+	jobTypes[job2] = &consumerType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
 		IsGeneric:  true,
@@ -291,8 +291,8 @@ func TestWorkersPaused(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	deletePausedAndLockedKeys(ns, job1, pool)
 
-	jobTypes := make(map[string]*jobType)
-	jobTypes[job1] = &jobType{
+	jobTypes := make(map[string]*consumerType)
+	jobTypes[job1] = &consumerType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,

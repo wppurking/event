@@ -6,7 +6,7 @@ import (
 )
 
 // 抽象出某一个类型的 Message, 代表了具体的 Name, 调用的方法以及相关的参数
-type jobType struct {
+type consumerType struct {
 	Name string
 	JobOptions
 
@@ -16,16 +16,16 @@ type jobType struct {
 	runs           uint32 // Running 正在运行的 jobs
 }
 
-func (jt *jobType) incr() {
+func (jt *consumerType) incr() {
 	atomic.AddUint32(&jt.runs, 1)
 }
 
-func (jt *jobType) decr() {
+func (jt *consumerType) decr() {
 	n := -1
 	atomic.AddUint32(&jt.runs, uint32(n))
 }
 
-func (jt *jobType) Runs() uint {
+func (jt *consumerType) Runs() uint {
 	return uint(jt.runs)
 }
 
