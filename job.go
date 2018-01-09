@@ -9,6 +9,8 @@ import (
 
 // Job represents a job.
 type Job struct {
+	*amqp.Delivery `json:"-"`
+
 	// Inputs when making a new job
 	Name       string                 `json:"name,omitempty"`
 	ID         string                 `json:"id"`
@@ -19,7 +21,6 @@ type Job struct {
 	fails    int64             `json:"-"`
 	rawJSON  []byte            `json:"-"`
 	argError error             `json:"-"`
-	msg      *amqp.Delivery    `json:"-"`
 	ack      func(ev ackEvent) `json:"-"` // ack 的行动
 }
 
@@ -34,7 +35,7 @@ func newJob(rawJSON []byte, msg *amqp.Delivery, ack func(ev ackEvent)) (*Job, er
 		return nil, err
 	}
 	job.rawJSON = rawJSON
-	job.msg = msg
+	job.Delivery = msg
 	job.ack = ack
 	return &job, nil
 }
@@ -43,7 +44,7 @@ func (j *Job) Ack() bool {
 	if j.ack == nil {
 		return false
 	}
-	j.ack(ackEvent{msg: j.msg, t: "ack"})
+	j.ack(ackEvent{msg: j.Delivery, t: "ack"})
 	return true
 }
 
@@ -51,7 +52,7 @@ func (j *Job) Nack() bool {
 	if j.ack == nil {
 		return false
 	}
-	j.ack(ackEvent{msg: j.msg, t: "nack"})
+	j.ack(ackEvent{msg: j.Delivery, t: "nack"})
 	return true
 }
 
@@ -59,7 +60,7 @@ func (j *Job) Reject() bool {
 	if j.ack == nil {
 		return false
 	}
-	j.ack(ackEvent{msg: j.msg, t: "reject"})
+	j.ack(ackEvent{msg: j.Delivery, t: "reject"})
 	return true
 }
 
@@ -75,7 +76,7 @@ func (j *Job) Fails() int64 {
 		return j.fails
 	}
 
-	deathsMap, ok := j.msg.Headers["x-death"]
+	deathsMap, ok := j.Headers["x-death"]
 	if !ok {
 		return 0
 	}
