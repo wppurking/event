@@ -5,6 +5,9 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// consumer 负责与 RabbitMQ 中的某一个 queue + routing_key 打交道:
+// * 获取 Message
+// * Ack/Nack message
 type consumer struct {
 	jt        *jobType
 	exc       cony.Exchange

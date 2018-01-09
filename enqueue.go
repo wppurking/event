@@ -124,6 +124,7 @@ func (e *Enqueuer) EnqueueJob(job *Job) error {
 	return e.pub.PublishWithRoutingKey(msg.pub, msg.routingKey)
 }
 
+// EnqueueInJob 压入延时的 job
 func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) error {
 	msg, err := job.encode()
 	if err != nil {
