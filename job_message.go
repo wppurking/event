@@ -14,7 +14,7 @@ type message struct {
 }
 
 // 输出 rabbitmq 使用的 Publishing
-func (j *Job) serializeMq() (*message, error) {
+func (j *Job) serializeMsg() (*message, error) {
 	rawJSON, err := jsoniter.Marshal(j)
 	if err != nil {
 		return nil, err
