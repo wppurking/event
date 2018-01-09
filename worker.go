@@ -8,14 +8,14 @@ import (
 )
 
 type worker struct {
-	workerID    string
-	enqueuer    *Enqueuer
-	poolID      string
-	namespace   string
-	jobTypes    map[string]*consumerType
-	consumers   map[string]*consumer
-	middleware  []*middlewareHandler
-	contextType reflect.Type
+	workerID      string
+	enqueuer      *Enqueuer
+	poolID        string
+	namespace     string
+	consumerTypes map[string]*consumerType
+	consumers     map[string]*consumer
+	middleware    []*middlewareHandler
+	contextType   reflect.Type
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
@@ -26,7 +26,7 @@ type worker struct {
 
 func newWorker(namespace string, poolID string, contextType reflect.Type,
 	middleware []*middlewareHandler, enqueuer *Enqueuer,
-	jobTypes map[string]*consumerType, consumers map[string]*consumer) *worker {
+	consumerTypes map[string]*consumerType, consumers map[string]*consumer) *worker {
 	workerID := makeIdentifier()
 
 	w := &worker{
@@ -43,15 +43,15 @@ func newWorker(namespace string, poolID string, contextType reflect.Type,
 		doneDrainingChan: make(chan struct{}),
 	}
 
-	w.updateMiddlewareAndJobTypes(middleware, jobTypes, consumers)
+	w.updateMiddlewareAndConsumerTypes(middleware, consumerTypes, consumers)
 
 	return w
 }
 
 // note: can't be called while the thing is started
-func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*consumerType, consumers map[string]*consumer) {
+func (w *worker) updateMiddlewareAndConsumerTypes(middleware []*middlewareHandler, consumerTypes map[string]*consumerType, consumers map[string]*consumer) {
 	w.middleware = middleware
-	w.jobTypes = jobTypes
+	w.consumerTypes = consumerTypes
 	w.consumers = consumers
 }
 
@@ -74,13 +74,13 @@ var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 3000}
 
 func (w *worker) loop() {
 	var drained bool
-	var consequtiveNoJobs int64
+	var consequtiveNoMsgs int64
 
 	// Begin immediately. We'll change the duration on each tick with a timer.Reset()
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	// 下面这一段对于 fetchJob 的轮训代码很棒:
+	// 下面这一段对于 fetchMsg 的轮训代码很棒:
 	// 既考虑了错处时的处理.
 	// 也考虑了成功处理后的获取.
 	// 也考虑到没有获取到任务的处理.
@@ -93,21 +93,21 @@ func (w *worker) loop() {
 			drained = true
 			timer.Reset(0)
 		case <-timer.C:
-			job, err := w.fetchJob()
+			job, err := w.fetchMsg()
 			if err != nil {
 				logError("worker.fetch", err)
 				timer.Reset(10 * time.Millisecond)
 			} else if job != nil {
 				w.processJob(job)
-				consequtiveNoJobs = 0
+				consequtiveNoMsgs = 0
 				timer.Reset(0)
 			} else {
 				if drained {
 					w.doneDrainingChan <- struct{}{}
 					drained = false
 				}
-				consequtiveNoJobs++
-				idx := consequtiveNoJobs
+				consequtiveNoMsgs++
+				idx := consequtiveNoMsgs
 				if idx >= int64(len(sleepBackoffsInMilliseconds)) {
 					idx = int64(len(sleepBackoffsInMilliseconds)) - 1
 				}
@@ -117,11 +117,11 @@ func (w *worker) loop() {
 	}
 }
 
-func (w *worker) fetchJob() (*Message, error) {
+func (w *worker) fetchMsg() (*Message, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	for n, c := range w.consumers {
-		if jt, ok := w.jobTypes[n]; ok && jt.MaxConcurrency > 0 && jt.Runs() >= jt.MaxConcurrency {
+		if jt, ok := w.consumerTypes[n]; ok && jt.MaxConcurrency > 0 && jt.Runs() >= jt.MaxConcurrency {
 			continue
 		}
 		job, err := c.Peek()
@@ -136,7 +136,7 @@ func (w *worker) fetchJob() (*Message, error) {
 }
 
 func (w *worker) processJob(job *Message) {
-	if jt, ok := w.jobTypes[job.Name]; ok {
+	if jt, ok := w.consumerTypes[job.Name]; ok {
 		jt.incr()
 		// TODO 需要增加任务执行的 mertic
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
@@ -169,7 +169,7 @@ func (w *worker) addToRetry(job *Message, runErr error) {
 	var backoff BackoffCalculator
 
 	// Choose the backoff provider
-	jt, ok := w.jobTypes[job.Name]
+	jt, ok := w.consumerTypes[job.Name]
 	if ok {
 		backoff = jt.Backoff
 	}
@@ -183,18 +183,18 @@ func (w *worker) addToRetry(job *Message, runErr error) {
 	}
 }
 
-func (w *worker) addToDead(job *Message, runErr error) {
+func (w *worker) addToDead(msg *Message, runErr error) {
 	// TODO: 需要考虑如何解决死信队列的重新激活问题
-	job.Name = fmt.Sprintf("%s.%s", deadQueue, job.Name)
-	job.nonPersistent = true
-	err := w.enqueuer.EnqueueMessage(job)
+	msg.Name = fmt.Sprintf("%s.%s", deadQueue, msg.Name)
+	msg.nonPersistent = true
+	err := w.enqueuer.EnqueueMessage(msg)
 	if err != nil {
 		logError("worker.add_to_dead.serialize", err)
 	}
 }
 
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion
-func defaultBackoffCalculator(job *Message) int64 {
-	fails := job.Fails()
+func defaultBackoffCalculator(msg *Message) int64 {
+	fails := msg.Fails()
 	return (fails * fails * fails * fails) + 15 + (rand.Int63n(30) * (fails + 1))
 }

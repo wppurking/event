@@ -97,7 +97,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	wp.middleware = append(wp.middleware, mw)
 
 	for _, w := range wp.workers {
-		w.updateMiddlewareAndJobTypes(wp.middleware, wp.consumerTypes, wp.consumers)
+		w.updateMiddlewareAndConsumerTypes(wp.middleware, wp.consumerTypes, wp.consumers)
 	}
 
 	return wp
@@ -114,8 +114,8 @@ func (wp *WorkerPool) Consumer(name string, fn interface{}) *WorkerPool {
 // ConsumerWithOptions adds a handler for 'name' jobs as per the Message function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 // name: 大小写不敏感
-func (wp *WorkerPool) ConsumerWithOptions(name string, jobOpts ConsumerOptions, fn interface{}) *WorkerPool {
-	jobOpts = applyDefaultsAndValidate(jobOpts)
+func (wp *WorkerPool) ConsumerWithOptions(name string, consumerOpts ConsumerOptions, fn interface{}) *WorkerPool {
+	consumerOpts = applyDefaultsAndValidate(consumerOpts)
 
 	n := strings.ToLower(name)
 	vfn := reflect.ValueOf(fn)
@@ -123,7 +123,7 @@ func (wp *WorkerPool) ConsumerWithOptions(name string, jobOpts ConsumerOptions, 
 	jt := &consumerType{
 		Name:            n,
 		DynamicHandler:  vfn,
-		ConsumerOptions: jobOpts,
+		ConsumerOptions: consumerOpts,
 	}
 	if gh, ok := fn.(func(*Message) error); ok {
 		jt.IsGeneric = true
@@ -134,7 +134,7 @@ func (wp *WorkerPool) ConsumerWithOptions(name string, jobOpts ConsumerOptions, 
 	wp.consumers[n] = newConsumer(wp.namespace, jt, wp.defaultExc)
 
 	for _, w := range wp.workers {
-		w.updateMiddlewareAndJobTypes(wp.middleware, wp.consumerTypes, wp.consumers)
+		w.updateMiddlewareAndConsumerTypes(wp.middleware, wp.consumerTypes, wp.consumers)
 	}
 
 	return wp
@@ -227,13 +227,13 @@ func validateContextType(ctxType reflect.Type) {
 
 func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {
 	if !isValidHandlerType(ctxType, vfn) {
-		panic(instructiveMessage(vfn, "a handler", "handler", "job *work.Message", ctxType))
+		panic(instructiveMessage(vfn, "a handler", "handler", "msg *work.Message", ctxType))
 	}
 }
 
 func validateMiddlewareType(ctxType reflect.Type, vfn reflect.Value) {
 	if !isValidMiddlewareType(ctxType, vfn) {
-		panic(instructiveMessage(vfn, "middleware", "middleware", "job *work.Message, next NextMiddlewareFunc", ctxType))
+		panic(instructiveMessage(vfn, "middleware", "middleware", "msg *work.Message, next NextMiddlewareFunc", ctxType))
 	}
 }
 
