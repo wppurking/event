@@ -50,6 +50,7 @@ func (j *Job) serialize() ([]byte, error) {
 	return jsoniter.Marshal(j)
 }
 
+// Fails 返回从 x-dead header 信息中记录的重试记录
 func (j *Job) Fails() int64 {
 	// refs: https://github.com/wppurking/hutch-schedule/blob/master/lib/hutch/error_handlers/max_retry.rb
 	//map[x-death:[map[exchange:work.work.schedule routing-keys:[foobar] original-expiration:64000 count:1 reason:expired queue:work._retry time:2018-01-09 00:01:43 +0800 CST]]]
@@ -68,20 +69,20 @@ func (j *Job) Fails() int64 {
 		var xDeathArray []map[string]interface{}
 		for _, death := range deaths {
 			for _, rk := range death["routing-keys"].([]string) {
-				if strings.ToLower(rk) != j.Name {
-					continue
+				// Fixme: 这里需要获取到 workPool 的 Namespace 才能做 100% 匹配, 现在只能做 routing_key 的包含匹配
+				if len(j.Name) > 0 && strings.Contains(strings.ToLower(rk), j.Name) {
+					xDeathArray = append(xDeathArray, death)
 				}
-				xDeathArray = append(xDeathArray, death)
 			}
 		}
 
-		var c int64 = 0
+		c := 0
 		for _, xDeath := range xDeathArray {
-			if cd, ok := xDeath["count"].(int64); ok {
+			if cd, ok := xDeath["count"].(int); ok {
 				c += cd
 			}
 		}
-		j.fails = c
+		j.fails = int64(c)
 		return j.fails
 	}
 	return 0

@@ -2,6 +2,7 @@ package work
 
 // 准备将传递的消息, 充分利用 RabbitMQ 中的消息, 让 message 只保留 json
 import (
+	"strings"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -33,7 +34,7 @@ func (j *Job) encode() (*message, error) {
 // 解析出一个 Job
 func decodeJob(msg *amqp.Delivery, ack func(ev ackEvent)) *Job {
 	return &Job{
-		Name:     msg.RoutingKey,
+		Name:     strings.ToLower(msg.RoutingKey),
 		Delivery: msg,
 		ack:      ack,
 	}
