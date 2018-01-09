@@ -69,8 +69,7 @@ func (w *worker) drain() {
 	<-w.doneDrainingChan
 }
 
-//var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
-var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 3000}
+var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 2000}
 
 func (w *worker) loop() {
 	var drained bool
