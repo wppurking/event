@@ -74,7 +74,7 @@ func (e *Enqueuer) loop() {
 	}
 }
 
-func (e *Enqueuer) msg2Job(routingKey string, msg map[string]interface{}) (*Job, error) {
+func (e *Enqueuer) map2Job(routingKey string, msg interface{}) (*Job, error) {
 	body, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -89,8 +89,8 @@ func (e *Enqueuer) msg2Job(routingKey string, msg map[string]interface{}) (*Job,
 
 // Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(routingKey string, msg map[string]interface{}) (*Job, error) {
-	job, err := e.msg2Job(routingKey, msg)
+func (e *Enqueuer) Enqueue(routingKey string, msg interface{}) (*Job, error) {
+	job, err := e.map2Job(routingKey, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (e *Enqueuer) Enqueue(routingKey string, msg map[string]interface{}) (*Job,
 
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
 func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*ScheduledJob, error) {
-	job, err := e.msg2Job(routingKey, msg)
+	job, err := e.map2Job(routingKey, msg)
 	if err != nil {
 		return nil, err
 	}
