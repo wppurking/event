@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// TODO: retryQueue 与 deadQueue 都需要与 hutch, hutch-schedule 命名同规则, 这样才可以整合使用
 	retryQueue   = "_retry"
 	deadQueue    = "_dead"
 	exchangeName = "hutch"
