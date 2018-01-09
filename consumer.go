@@ -1,6 +1,8 @@
 package work
 
 import (
+	"fmt"
+
 	"github.com/assembla/cony"
 	"github.com/streadway/amqp"
 )
@@ -34,7 +36,7 @@ func newConsumer(namespace string, ct *consumerType, exc cony.Exchange) *consume
 		namespace:    namespace,
 		ct:           ct,
 		exc:          exc,
-		ackDeliveies: make(chan ackEvent, 500),
+		ackDeliveies: make(chan ackEvent, 500), // 给予了 500 的缓冲 chan. 内存快与网络, 如果 500 还不足够, 就只能阻塞了
 		done:         make(chan int, 1),
 		que:          que,
 	}
@@ -74,6 +76,9 @@ func (c *consumer) loopActEvent() {
 	for {
 		select {
 		case ev := <-c.ackDeliveies:
+			// 如果这里出现了异常, 那么应该就是网络断开:
+			// 1. 那就只能让连接处取消 ack, 让任务在 rabbitmq 中再投递一次
+			// 2. 可选择, 等待一个周期重新进入 ackDeliveies
 			switch ev.t {
 			case "ack":
 				ev.msg.Ack(false)
@@ -97,7 +102,7 @@ func (c *consumer) ack(ev ackEvent) {
 	c.ackDeliveies <- ev
 }
 
-// Peek 一个任务
+// Peek 非阻塞额获取一个任务, 如果没有任务, 则返回 nil
 func (c *consumer) Peek() (*Message, error) {
 	if c.c == nil {
 		return nil, nil
@@ -105,18 +110,18 @@ func (c *consumer) Peek() (*Message, error) {
 	select {
 	case err := <-c.c.Errors():
 		return nil, err
-	case j := <-c.c.Deliveries():
-		return decodeJob(&j, c.ack), nil
+	case d := <-c.c.Deliveries():
+		return decodeMessage(&d, c.ack), nil
 	default:
 		return nil, nil
 	}
 }
 
-// Pop 阻塞的获取一个任务
+// Pop 阻塞的获取一个任务, 如果 cony.Consumer 为空, 则返回 error
 func (c *consumer) Pop() (*Message, error) {
 	if c.c == nil {
-		return nil, nil
+		return nil, fmt.Errorf("*cony.Consumer is nil")
 	}
-	j := <-c.c.Deliveries()
-	return decodeJob(&j, c.ack), nil
+	d := <-c.c.Deliveries()
+	return decodeMessage(&d, c.ack), nil
 }

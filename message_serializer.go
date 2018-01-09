@@ -36,7 +36,7 @@ func (j *Message) encode() (*message, error) {
 }
 
 // 解析出一个 Message
-func decodeJob(msg *amqp.Delivery, ack func(ev ackEvent)) *Message {
+func decodeMessage(msg *amqp.Delivery, ack func(ev ackEvent)) *Message {
 	return &Message{
 		Name:     strings.ToLower(msg.RoutingKey),
 		Delivery: msg,
