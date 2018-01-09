@@ -129,6 +129,7 @@ func (w *worker) fetchJob() (*Job, error) {
 			return nil, err
 		}
 		if job != nil {
+			fmt.Println("fetch Job:", job, "delivery:", *job.Delivery)
 			return job, nil
 		}
 	}

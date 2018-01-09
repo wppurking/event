@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/assembla/cony"
+	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -122,7 +123,9 @@ func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
 
 // Test Helpers
 func (t *TestContext) SleepyJob(job *Job) error {
-	sleepTime := time.Duration(job.ArgInt64("sleep"))
+	msg := Q{}
+	jsoniter.Unmarshal(job.Body, &msg)
+	sleepTime := time.Duration(msg["sleep"].(int))
 	time.Sleep(sleepTime * time.Millisecond)
 	return nil
 }

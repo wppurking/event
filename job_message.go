@@ -14,13 +14,15 @@ type message struct {
 
 // 输出 rabbitmq 使用的 Publishing
 func (j *Job) encode() (*message, error) {
+	j.MessageId = makeIdentifier()
+	j.Timestamp = time.Now()
 	p := amqp.Publishing{
-		MessageId:    makeIdentifier(),
+		MessageId:    j.MessageId,
 		Headers:      j.Headers,
 		Body:         j.Body,
 		DeliveryMode: 2,
 		ContentType:  "application/json",
-		Timestamp:    time.Now(),
+		Timestamp:    j.Timestamp,
 	}
 	return &message{
 		pub:        p,

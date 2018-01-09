@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/assembla/cony"
@@ -15,12 +14,15 @@ var namespace = flag.String("ns", "work", "namespace")
 
 func epsilonHandler(job *work.Job) error {
 	fmt.Println("epsilon")
-	time.Sleep(3 * time.Second)
+	//time.Sleep(time.Second)
 
-	if rand.Intn(2) == 0 {
-		return fmt.Errorf("random error")
-	}
-	return nil
+	return fmt.Errorf("random error")
+	/*
+		if rand.Intn(2) == 0 {
+			return fmt.Errorf("random error")
+		}
+		return nil
+	*/
 }
 
 type context struct{}
@@ -29,23 +31,25 @@ func main() {
 	flag.Parse()
 	fmt.Println("Installing some fake data")
 
-	// Enqueue some jobs:
-	go enqueues()
-
 	enq := work.NewEnqueuer(*namespace, cony.URL(*rabbitMqURL))
+	// Enqueue some jobs:
+	//go enqueues(enq)
+
 	wp := work.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
-	wp.JobWithOptions("foobar", work.JobOptions{MaxConcurrency: 2, Prefetch: 30}, epsilonHandler)
-	//wp.Job("foobar", epsilonHandler)
+	//wp.JobWithOptions("foobar", work.JobOptions{MaxConcurrency: 2, Prefetch: 30}, epsilonHandler)
+	wp.Job("foobar", epsilonHandler)
 	wp.Start()
 
 	select {}
 }
 
-func enqueues() {
-	en := work.NewEnqueuer(*namespace, cony.URL(*rabbitMqURL))
+func enqueues(en *work.Enqueuer) {
 	for {
-		for i := 0; i < 20; i++ {
-			en.Enqueue("foobar", work.Q{"i": i})
+		for i := 0; i < 5; i++ {
+			_, err := en.Enqueue("foobar", work.Q{"i": i})
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 
 		time.Sleep(1 * time.Second)

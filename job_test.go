@@ -1,13 +1,8 @@
 package work
 
-import (
-	"github.com/stretchr/testify/assert"
-	"math"
-	"testing"
-)
-
 type TestContext struct{}
 
+/*
 func TestJobArgumentExtraction(t *testing.T) {
 	j := Job{}
 	j.setArg("str1", "bar")
@@ -255,3 +250,4 @@ func TestJobArgumentExtractionBadFloat(t *testing.T) {
 		j.argError = nil
 	}
 }
+*/

@@ -74,14 +74,7 @@ func (e *Enqueuer) loop() {
 	}
 }
 
-// Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
-// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(routingKey string, msg map[string]interface{}) (*Job, error) {
-	return e.EnqueueIn(routingKey, 0, msg)
-}
-
-// EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
-func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Job, error) {
+func (e *Enqueuer) msg2Job(routingKey string, msg map[string]interface{}) (*Job, error) {
 	body, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -90,6 +83,29 @@ func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[st
 	job := &Job{
 		Name:     routingKey,
 		Delivery: &amqp.Delivery{Body: body},
+	}
+	return job, nil
+}
+
+// Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
+// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
+func (e *Enqueuer) Enqueue(routingKey string, msg map[string]interface{}) (*Job, error) {
+	job, err := e.msg2Job(routingKey, msg)
+	if err != nil {
+		return nil, err
+	}
+	err = e.EnqueueJob(job)
+	if err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
+// EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
+func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Job, error) {
+	job, err := e.msg2Job(routingKey, msg)
+	if err != nil {
+		return nil, err
 	}
 	err = e.EnqueueInJob(job, secondsFromNow)
 	if err != nil {
@@ -100,7 +116,12 @@ func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[st
 
 // EnqueueJob 压入一个 job 任务
 func (e *Enqueuer) EnqueueJob(job *Job) error {
-	return e.EnqueueInJob(job, 0)
+	msg, err := job.encode()
+	if err != nil {
+		return err
+	}
+
+	return e.pub.PublishWithRoutingKey(msg.pub, msg.routingKey)
 }
 
 func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) error {
@@ -112,5 +133,6 @@ func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) error {
 	if secondsFromNow > 0 {
 		msg.pub.Expiration = strconv.Itoa(int(secondsFromNow * 1000))
 	}
+	fmt.Println("EnqueueInJob:", msg.pub, "fails:", job.Fails(), "delay:", secondsFromNow, "s")
 	return e.schePub.PublishWithRoutingKey(msg.pub, msg.routingKey)
 }

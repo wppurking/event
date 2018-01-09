@@ -2,11 +2,13 @@ package work
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
+/*
 func TestRunBasicMiddleware(t *testing.T) {
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		j.setArg("mw1", "mw1")
@@ -52,6 +54,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 	c := v.Interface().(*tstCtx)
 	assert.Equal(t, "mw1mw2mw3h1foo", c.String())
 }
+*/
 
 func TestRunHandlerError(t *testing.T) {
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
