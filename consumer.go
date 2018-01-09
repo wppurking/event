@@ -32,7 +32,7 @@ type ackEvent struct {
 func newConsumer(namespace string, ct *consumerType, exc cony.Exchange) *consumer {
 	var que *cony.Queue
 	if len(ct.QueueName) > 0 {
-		que = buildConyQueue(withNS(namespace, ct.QueueName), nil)
+		que = buildConyQueue(ct.QueueName, nil)
 	} else {
 		que = buildConyQueue(withNS(namespace, ct.RoutingKey), nil)
 	}

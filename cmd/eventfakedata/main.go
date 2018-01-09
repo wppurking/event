@@ -15,6 +15,7 @@ var namespace = flag.String("ns", "work", "namespace")
 
 func epsilonHandler(job *event.Message) error {
 	fmt.Println("epsilon")
+	fmt.Println(string(job.Body))
 	time.Sleep(time.Second)
 
 	if rand.Intn(2) == 0 {
@@ -25,6 +26,8 @@ func epsilonHandler(job *event.Message) error {
 
 type context struct{}
 
+var routingKey = "ear.buyerid.create"
+
 func main() {
 	flag.Parse()
 	fmt.Println("Installing some fake data")
@@ -34,8 +37,9 @@ func main() {
 	go enqueues(enq)
 
 	wp := event.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
-	wp.ConsumerWithOptions("foobar", event.ConsumerOptions{MaxFails: 3, Prefetch: 30}, epsilonHandler)
-	//wp.Message("foobar", epsilonHandler)
+	//opts := event.ConsumerOptions{MaxFails: 3, Prefetch: 30, QueueName:"queue_name"}
+	//wp.ConsumerWithOptions(routingKey, opts, epsilonHandler)
+	wp.Consumer(routingKey, epsilonHandler)
 	wp.Start()
 
 	select {}
@@ -44,7 +48,7 @@ func main() {
 func enqueues(en *event.Publisher) {
 	for {
 		for i := 0; i < 20; i++ {
-			_, err := en.Publish("foobar", event.Q{"i": i})
+			_, err := en.Publish(routingKey, event.Q{"i": i})
 			if err != nil {
 				fmt.Println(err)
 			}
