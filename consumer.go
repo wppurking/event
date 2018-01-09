@@ -30,7 +30,12 @@ type ackEvent struct {
 
 // 根据参数创建一个新的 consumer
 func newConsumer(namespace string, ct *consumerType, exc cony.Exchange) *consumer {
-	que := buildConyQueue(withNS(namespace, ct.RoutingKey), nil)
+	var que *cony.Queue
+	if len(ct.QueueName) > 0 {
+		que = buildConyQueue(withNS(namespace, ct.QueueName), nil)
+	} else {
+		que = buildConyQueue(withNS(namespace, ct.RoutingKey), nil)
+	}
 
 	return &consumer{
 		namespace:    namespace,

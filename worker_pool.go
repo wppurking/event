@@ -118,18 +118,18 @@ func (wp *WorkerPool) ConsumerWithOptions(routingKey string, consumerOpts Consum
 	rk := strings.ToLower(routingKey)
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
-	jt := &consumerType{
+	ct := &consumerType{
 		RoutingKey:      rk,
 		DynamicHandler:  vfn,
 		ConsumerOptions: consumerOpts,
 	}
 	if gh, ok := fn.(func(*Message) error); ok {
-		jt.IsGeneric = true
-		jt.GenericHandler = gh
+		ct.IsGeneric = true
+		ct.GenericHandler = gh
 	}
 
-	wp.consumerTypes[rk] = jt
-	wp.consumers[rk] = newConsumer(wp.namespace, jt, wp.defaultExc)
+	wp.consumerTypes[rk] = ct
+	wp.consumers[rk] = newConsumer(wp.namespace, ct, wp.defaultExc)
 
 	for _, w := range wp.workers {
 		w.updateMiddlewareAndConsumerTypes(wp.middleware, wp.consumerTypes, wp.consumers)

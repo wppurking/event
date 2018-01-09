@@ -4,6 +4,7 @@ import "fmt"
 
 // ConsumerOptions can be passed to ConsumerWithOptions.
 type ConsumerOptions struct {
+	QueueName      string            // 是否从指定的一个 Queue 中获取消息
 	Prefetch       int               // 指定队列的 Prefetch 数量
 	Priority       uint              // Priority from 1 to 10000
 	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
