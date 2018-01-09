@@ -16,17 +16,17 @@ type consumerType struct {
 	runs           uint32 // Running 正在运行的 jobs
 }
 
-func (jt *consumerType) incr() {
-	atomic.AddUint32(&jt.runs, 1)
+func (ct *consumerType) incr() {
+	atomic.AddUint32(&ct.runs, 1)
 }
 
-func (jt *consumerType) decr() {
+func (ct *consumerType) decr() {
 	n := -1
-	atomic.AddUint32(&jt.runs, uint32(n))
+	atomic.AddUint32(&ct.runs, uint32(n))
 }
 
-func (jt *consumerType) Runs() uint {
-	return uint(jt.runs)
+func (ct *consumerType) Runs() uint {
+	return uint(ct.runs)
 }
 
 // GenericHandler is a job handler without any custom context.

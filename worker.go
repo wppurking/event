@@ -121,7 +121,7 @@ func (w *worker) fetchMsg() (*Message, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	for n, c := range w.consumers {
-		if jt, ok := w.consumerTypes[n]; ok && jt.MaxConcurrency > 0 && jt.Runs() >= jt.MaxConcurrency {
+		if ct, ok := w.consumerTypes[n]; ok && ct.MaxConcurrency > 0 && ct.Runs() >= ct.MaxConcurrency {
 			continue
 		}
 		msg, err := c.Peek()
@@ -136,14 +136,14 @@ func (w *worker) fetchMsg() (*Message, error) {
 }
 
 func (w *worker) processMsg(msg *Message) {
-	if jt, ok := w.consumerTypes[msg.Name]; ok {
-		jt.incr()
+	if ct, ok := w.consumerTypes[msg.Name]; ok {
+		ct.incr()
 		// TODO 需要增加任务执行的 mertic
-		_, runErr := handleMessage(msg, w.contextType, w.middleware, jt)
+		_, runErr := handleMessage(msg, w.contextType, w.middleware, ct)
 		if runErr != nil {
-			w.addToRetryOrDead(jt, msg, runErr)
+			w.addToRetryOrDead(ct, msg, runErr)
 		}
-		jt.decr()
+		ct.decr()
 		msg.Ack()
 	} else {
 		// NOTE: since we don't have a consumerType, we don't know max retries
@@ -153,12 +153,12 @@ func (w *worker) processMsg(msg *Message) {
 	}
 }
 
-func (w *worker) addToRetryOrDead(jt *consumerType, msg *Message, runErr error) {
-	failsRemaining := int64(jt.MaxFails) - msg.Fails()
+func (w *worker) addToRetryOrDead(ct *consumerType, msg *Message, runErr error) {
+	failsRemaining := int64(ct.MaxFails) - msg.Fails()
 	if failsRemaining > 0 {
 		w.addToRetry(msg, runErr)
 	} else {
-		if !jt.SkipDead {
+		if !ct.SkipDead {
 			w.addToDead(msg, runErr)
 		}
 	}
@@ -169,9 +169,9 @@ func (w *worker) addToRetry(msg *Message, runErr error) {
 	var backoff BackoffCalculator
 
 	// Choose the backoff provider
-	jt, ok := w.consumerTypes[msg.Name]
+	ct, ok := w.consumerTypes[msg.Name]
 	if ok {
-		backoff = jt.Backoff
+		backoff = ct.Backoff
 	}
 
 	if backoff == nil {
