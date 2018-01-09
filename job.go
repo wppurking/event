@@ -88,10 +88,6 @@ func (j *Job) Fails() int64 {
 	return 0
 }
 
-func (j *Job) failed(err error) {
-	// TODO: 需要这个方法吗?
-}
-
 // RetryJob represents a job in the retry queue.
 type RetryJob struct {
 	RetryAt int64 `json:"retry_at"`

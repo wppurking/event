@@ -142,7 +142,6 @@ func (w *worker) processJob(job *Job) {
 		// TODO 需要增加任务执行的 mertic
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		if runErr != nil {
-			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
 		}
 		jt.decr()
@@ -151,7 +150,6 @@ func (w *worker) processJob(job *Job) {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
-		job.failed(runErr)
 		w.addToDead(job, runErr)
 	}
 }
