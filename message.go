@@ -3,7 +3,6 @@ package work
 import (
 	"strings"
 
-	"github.com/json-iterator/go"
 	"github.com/streadway/amqp"
 )
 
@@ -45,10 +44,6 @@ func (j *Message) Reject() bool {
 	}
 	j.ack(ackEvent{msg: j.Delivery, t: "reject"})
 	return true
-}
-
-func (j *Message) serialize() ([]byte, error) {
-	return jsoniter.Marshal(j)
 }
 
 // Fails 返回从 x-dead header 信息中记录的重试记录
