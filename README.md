@@ -31,6 +31,7 @@ wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 
 5. Event 消息失败过多后进入 Dead 队列. (非 RabbitMQ 的 DLX, 仅仅是 Dead 队列)
 6. 利用 RabbitMQ 的 UI 面板查看任务处理情况以及速度
 7. 利用 RabbitMQ 的特性实现不同 Event 的优先级. (暂未实现)
+8. 默认与 [hutch](https://github.com/gocardless/hutch) 兼容, 可无区别消费 Event
 
 ### 现在的开源的后端任务项目介绍
 下面列举了不同的后端任务/消息处理的框架, 可以根据需要进行选择
