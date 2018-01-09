@@ -12,7 +12,7 @@ import (
 )
 
 var namespace = "bench_test"
-var enq *work.Enqueuer
+var enq *work.Publisher
 
 type context struct{}
 
@@ -30,7 +30,7 @@ func main() {
 	numJobs := 10
 	jobNames := []string{}
 	rabbitMqURL := "amqp://guest:guest@localhost:5672/ajd"
-	enq = work.NewEnqueuer(namespace, cony.URL(rabbitMqURL))
+	enq = work.NewPublisher(namespace, cony.URL(rabbitMqURL))
 
 	for i := 0; i < numJobs; i++ {
 		jobNames = append(jobNames, fmt.Sprintf("job%d", i))
@@ -89,7 +89,7 @@ DALOOP:
 func enqueueJobs(jobs []string, count int) {
 	for _, jobName := range jobs {
 		for i := 0; i < count; i++ {
-			enq.Enqueue(jobName, work.Q{"i": i})
+			enq.Publish(jobName, work.Q{"i": i})
 		}
 	}
 }

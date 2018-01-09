@@ -30,6 +30,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	en := work.NewEnqueuer(*namespace, cony.URL(*rabbitMqURL))
-	en.Enqueue(*jobName, args)
+	en := work.NewPublisher(*namespace, cony.URL(*rabbitMqURL))
+	en.Publish(*jobName, args)
 }

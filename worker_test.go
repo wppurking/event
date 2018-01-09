@@ -41,12 +41,12 @@ func TestWorkerBasics(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, cli)
-	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	enqueuer := NewPublisher(ns, cli)
+	_, err := enqueuer.Publish(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	_, err = enqueuer.Enqueue(job2, Q{"a": 2})
+	_, err = enqueuer.Publish(job2, Q{"a": 2})
 	assert.Nil(t, err)
-	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
+	_, err = enqueuer.Publish(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, "1", tstCtxType, nil, consumerTypes)
@@ -95,8 +95,8 @@ func TestWorkerInProgress(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, pool)
-	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	enqueuer := NewPublisher(ns, pool)
+	_, err := enqueuer.Publish(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
@@ -147,8 +147,8 @@ func TestWorkerRetry(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, pool)
-	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	enqueuer := NewPublisher(ns, pool)
+	_, err := enqueuer.Publish(job1, Q{"a": 1})
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
@@ -199,8 +199,8 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, pool)
-	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	enqueuer := NewPublisher(ns, pool)
+	_, err := enqueuer.Publish(job1, Q{"a": 1})
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
@@ -254,10 +254,10 @@ func TestWorkerDead(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, pool)
-	_, err := enqueuer.Enqueue(job1, nil)
+	enqueuer := NewPublisher(ns, pool)
+	_, err := enqueuer.Publish(job1, nil)
 	assert.Nil(t, err)
-	_, err = enqueuer.Enqueue(job2, nil)
+	_, err = enqueuer.Publish(job2, nil)
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
 	w.start()
@@ -302,8 +302,8 @@ func TestWorkersPaused(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer(ns, pool)
-	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	enqueuer := NewPublisher(ns, pool)
+	_, err := enqueuer.Publish(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, "1", pool, tstCtxType, nil, consumerTypes)
@@ -366,10 +366,10 @@ func BenchmarkJobProcessing(b *testing.B) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
-	enqueuer := NewEnqueuer(ns, pool)
+	enqueuer := NewPublisher(ns, pool)
 
 	for i := 0; i < b.N; i++ {
-		_, err := enqueuer.Enqueue("wat", nil)
+		_, err := enqueuer.Publish("wat", nil)
 		if err != nil {
 			panic(err)
 		}
@@ -593,10 +593,10 @@ func TestWorkerPoolStop(t *testing.T) {
 		return nil
 	})
 
-	var enqueuer = NewEnqueuer(ns, pool)
+	var enqueuer = NewPublisher(ns, pool)
 
 	for i := 0; i <= num_iters; i++ {
-		enqueuer.Enqueue("sample_job", Q{})
+		enqueuer.Publish("sample_job", Q{})
 	}
 
 	// Start the pool and quit before it has had a chance to complete

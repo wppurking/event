@@ -10,8 +10,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Enqueuer can enqueue jobs.
-type Enqueuer struct {
+// Publisher can enqueue jobs.
+type Publisher struct {
 	Namespace   string // eg, "myapp-work"
 	cli         *cony.Client
 	defaultExc  cony.Exchange
@@ -24,8 +24,8 @@ type Enqueuer struct {
 	mtx  sync.RWMutex
 }
 
-// NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
-func NewEnqueuer(namespace string, opts ...cony.ClientOpt) *Enqueuer {
+// NewPublisher creates a new enqueuer with the specified Redis namespace and Redis pool.
+func NewPublisher(namespace string, opts ...cony.ClientOpt) *Publisher {
 
 	defaultOpts := buildDefaultOpt()
 	if len(opts) == 0 {
@@ -33,7 +33,7 @@ func NewEnqueuer(namespace string, opts ...cony.ClientOpt) *Enqueuer {
 	}
 	defaultOpts = append(defaultOpts, opts...)
 
-	e := &Enqueuer{
+	e := &Publisher{
 		Namespace: namespace,
 		cli:       cony.NewClient(defaultOpts...),
 	}
@@ -42,7 +42,7 @@ func NewEnqueuer(namespace string, opts ...cony.ClientOpt) *Enqueuer {
 	return e
 }
 
-func (e *Enqueuer) newDeclears() {
+func (e *Publisher) newDeclears() {
 	e.defaultExc = cony.Exchange{Name: withNS(e.Namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
 	e.scheduleExc = cony.Exchange{Name: withNS(e.Namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
 	e.pub = cony.NewPublisher(e.defaultExc.Name, "")
@@ -58,7 +58,7 @@ func (e *Enqueuer) newDeclears() {
 }
 
 // 开始保护 rabbitmq 的连接
-func (e *Enqueuer) loop() {
+func (e *Publisher) loop() {
 	for e.cli.Loop() {
 		select {
 		case err := <-e.cli.Errors():
@@ -74,7 +74,7 @@ func (e *Enqueuer) loop() {
 	}
 }
 
-func (e *Enqueuer) map2Msg(routingKey string, msg interface{}) (*Message, error) {
+func (e *Publisher) map2Msg(routingKey string, msg interface{}) (*Message, error) {
 	body, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -86,35 +86,35 @@ func (e *Enqueuer) map2Msg(routingKey string, msg interface{}) (*Message, error)
 	}, nil
 }
 
-// Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
-// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(routingKey string, msg interface{}) (*Message, error) {
+// Publish will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
+// Example: e.Publish("send_email", work.Q{"addr": "test@example.com"})
+func (e *Publisher) Publish(routingKey string, msg interface{}) (*Message, error) {
 	evt, err := e.map2Msg(routingKey, msg)
 	if err != nil {
 		return nil, err
 	}
-	err = e.EnqueueMessage(evt)
+	err = e.PublishMessage(evt)
 	if err != nil {
 		return nil, err
 	}
 	return evt, nil
 }
 
-// EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
-func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Message, error) {
+// PublishIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
+func (e *Publisher) PublishIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Message, error) {
 	evt, err := e.map2Msg(routingKey, msg)
 	if err != nil {
 		return nil, err
 	}
-	err = e.EnqueueInMessage(evt, secondsFromNow)
+	err = e.PublishInMessage(evt, secondsFromNow)
 	if err != nil {
 		return nil, err
 	}
 	return evt, nil
 }
 
-// EnqueueMessage 压入一个 job 任务
-func (e *Enqueuer) EnqueueMessage(msg *Message) error {
+// PublishMessage 压入一个 job 任务
+func (e *Publisher) PublishMessage(msg *Message) error {
 	m, err := msg.encode()
 	if err != nil {
 		return err
@@ -123,8 +123,8 @@ func (e *Enqueuer) EnqueueMessage(msg *Message) error {
 	return e.pub.PublishWithRoutingKey(m.pub, m.routingKey)
 }
 
-// EnqueueInMessage 压入延时的 job
-func (e *Enqueuer) EnqueueInMessage(job *Message, secondsFromNow int64) error {
+// PublishInMessage 压入延时的 job
+func (e *Publisher) PublishInMessage(job *Message, secondsFromNow int64) error {
 	msg, err := job.encode()
 	if err != nil {
 		return err

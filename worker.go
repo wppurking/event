@@ -9,7 +9,7 @@ import (
 
 type worker struct {
 	workerID      string
-	enqueuer      *Enqueuer
+	enqueuer      *Publisher
 	poolID        string
 	namespace     string
 	consumerTypes map[string]*consumerType
@@ -25,7 +25,7 @@ type worker struct {
 }
 
 func newWorker(namespace string, poolID string, contextType reflect.Type,
-	middleware []*middlewareHandler, enqueuer *Enqueuer,
+	middleware []*middlewareHandler, enqueuer *Publisher,
 	consumerTypes map[string]*consumerType, consumers map[string]*consumer) *worker {
 	workerID := makeIdentifier()
 
@@ -177,7 +177,7 @@ func (w *worker) addToRetry(msg *Message, runErr error) {
 	if backoff == nil {
 		backoff = defaultBackoffCalculator
 	}
-	err := w.enqueuer.EnqueueInMessage(msg, backoff(msg))
+	err := w.enqueuer.PublishInMessage(msg, backoff(msg))
 	if err != nil {
 		logError("worker.add_to_retry", err)
 	}
@@ -187,7 +187,7 @@ func (w *worker) addToDead(msg *Message, runErr error) {
 	// TODO: 需要考虑如何解决死信队列的重新激活问题
 	msg.Name = fmt.Sprintf("%s.%s", deadQueue, msg.Name)
 	msg.nonPersistent = true
-	err := w.enqueuer.EnqueueMessage(msg)
+	err := w.enqueuer.PublishMessage(msg)
 	if err != nil {
 		logError("worker.add_to_dead.serialize", err)
 	}

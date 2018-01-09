@@ -31,8 +31,8 @@ func main() {
 	flag.Parse()
 	fmt.Println("Installing some fake data")
 
-	enq := work.NewEnqueuer(*namespace, cony.URL(*rabbitMqURL))
-	// Enqueue some jobs:
+	enq := work.NewPublisher(*namespace, cony.URL(*rabbitMqURL))
+	// Publish some jobs:
 	go enqueues(enq)
 
 	wp := work.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
@@ -43,10 +43,10 @@ func main() {
 	select {}
 }
 
-func enqueues(en *work.Enqueuer) {
+func enqueues(en *work.Publisher) {
 	for {
 		for i := 0; i < 20; i++ {
-			_, err := en.Enqueue("foobar", work.Q{"i": i})
+			_, err := en.Publish("foobar", work.Q{"i": i})
 			if err != nil {
 				fmt.Println(err)
 			}

@@ -19,7 +19,7 @@ type WorkerPool struct {
 	cli          *cony.Client
 	defaultExc   cony.Exchange
 	scheduleExc  cony.Exchange
-	enqueuer     *Enqueuer // workPool 内部的消息发送器
+	enqueuer     *Publisher // workPool 内部的消息发送器
 
 	contextType   reflect.Type
 	consumerTypes map[string]*consumerType
@@ -41,9 +41,9 @@ type BackoffCalculator func(msg *Message) int64
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
 // 期望 cli 与 enqueuer 是两个 connection, 避免并发时候的竞争
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer *Enqueuer, opts ...cony.ClientOpt) *WorkerPool {
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer *Publisher, opts ...cony.ClientOpt) *WorkerPool {
 	if enqueuer == nil {
-		panic("NewWorkerPool needs a non-nil *Enqueuer")
+		panic("NewWorkerPool needs a non-nil *Publisher")
 	}
 	// 默认的 cony 配置, url, backoff
 	defaultOpts := buildDefaultOpt()

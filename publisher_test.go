@@ -20,11 +20,11 @@ func clientOpts() []cony.ClientOpt {
 func TestEnqueue(t *testing.T) {
 	ns := "work"
 	name := "wat"
-	enqueuer := NewEnqueuer(ns, clientOpts()...)
+	enqueuer := NewPublisher(ns, clientOpts()...)
 	cn := newConsumer(enqueuer.Namespace, &consumerType{Name: name}, enqueuer.defaultExc)
 	cn.start(enqueuer.cli)
 
-	job, err := enqueuer.Enqueue(name, Q{"a": 1, "b": "cool"})
+	job, err := enqueuer.Publish(name, Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	assert.Equal(t, "wat", job.Name)
 	assert.True(t, len(job.MessageId) > 10)                       // Something is in it
@@ -48,8 +48,8 @@ func TestEnqueue(t *testing.T) {
 	assert.EqualValues(t, 1, q["a"])
 
 	// Now enqueue another job, make sure that we can enqueue multiple
-	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
-	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
+	_, err = enqueuer.Publish("wat", Q{"a": 1, "b": "cool"})
+	_, err = enqueuer.Publish("wat", Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	// pop 两次
 	j, _ = cn.Pop()
@@ -62,14 +62,14 @@ type c struct{}
 
 func TestEnqueueIn(t *testing.T) {
 	ns := "work"
-	enq := NewEnqueuer(ns, clientOpts()...)
+	enq := NewPublisher(ns, clientOpts()...)
 	wp := NewWorkerPool(c{}, 20, ns, enq, cony.URL(""))
 	wp.Start()
 	defer wp.Stop()
-	enqueuer := NewEnqueuer(ns, clientOpts()...)
+	enqueuer := NewPublisher(ns, clientOpts()...)
 
 	rk := "wat"
-	job, err := enqueuer.EnqueueIn(rk, 300, Q{"a": 1, "b": "cool"})
+	job, err := enqueuer.PublishIn(rk, 300, Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
