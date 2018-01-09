@@ -1,5 +1,7 @@
 package work
 
+import "fmt"
+
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
 	Prefetch       int               // 指定队列的 Prefetch 数量
@@ -8,4 +10,8 @@ type JobOptions struct {
 	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
 	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
 	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
+}
+
+func withNS(namespace, s string) string {
+	return fmt.Sprintf("%s.%s", namespace, s)
 }

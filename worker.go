@@ -136,9 +136,6 @@ func (w *worker) fetchJob() (*Job, error) {
 }
 
 func (w *worker) processJob(job *Job) {
-	if job.Unique {
-		w.deleteUniqueJob(job)
-	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		jt.incr()
 		// TODO 需要增加任务执行的 mertic
@@ -156,10 +153,6 @@ func (w *worker) processJob(job *Job) {
 		job.failed(runErr)
 		w.addToDead(job, runErr)
 	}
-}
-
-func (w *worker) deleteUniqueJob(job *Job) {
-	// TODO 这个暂时无法实现
 }
 
 func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
