@@ -119,13 +119,15 @@ func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
 
 // JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
+// name: 大小写不敏感
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
 	jobOpts = applyDefaultsAndValidate(jobOpts)
 
+	n := strings.ToLower(name)
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
 	jt := &jobType{
-		Name:           name,
+		Name:           n,
 		DynamicHandler: vfn,
 		JobOptions:     jobOpts,
 	}
@@ -134,8 +136,8 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 		jt.GenericHandler = gh
 	}
 
-	wp.jobTypes[name] = jt
-	wp.consumers[name] = newConsumer(wp.namespace, jt, wp.defaultExc)
+	wp.jobTypes[n] = jt
+	wp.consumers[n] = newConsumer(wp.namespace, jt, wp.defaultExc)
 
 	for _, w := range wp.workers {
 		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes, wp.consumers)

@@ -163,7 +163,7 @@ func (w *worker) deleteUniqueJob(job *Job) {
 }
 
 func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
-	failsRemaining := int64(jt.MaxFails) - job.Fails
+	failsRemaining := int64(jt.MaxFails) - job.Fails()
 	if failsRemaining > 0 {
 		w.addToRetry(job, runErr)
 	} else {
@@ -186,7 +186,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	if backoff == nil {
 		backoff = defaultBackoffCalculator
 	}
-	_, err := w.enqueuer.EnqueueInJob(job, backoff(job))
+	err := w.enqueuer.EnqueueInJob(job, backoff(job))
 	if err != nil {
 		logError("worker.add_to_retry", err)
 	}
@@ -203,6 +203,6 @@ func (w *worker) addToDead(job *Job, runErr error) {
 
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion
 func defaultBackoffCalculator(job *Job) int64 {
-	fails := job.Fails
+	fails := job.Fails()
 	return (fails * fails * fails * fails) + 15 + (rand.Int63n(30) * (fails + 1))
 }
