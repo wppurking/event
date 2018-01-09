@@ -102,7 +102,7 @@ func (e *Enqueuer) Enqueue(routingKey string, msg map[string]interface{}) (*Job,
 }
 
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
-func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Job, error) {
+func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*ScheduledJob, error) {
 	job, err := e.msg2Job(routingKey, msg)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,10 @@ func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[st
 	if err != nil {
 		return nil, err
 	}
-	return job, nil
+	return &ScheduledJob{
+		RunAt: nowEpochSeconds() + secondsFromNow,
+		Job:   job,
+	}, nil
 }
 
 // EnqueueJob 压入一个 job 任务
