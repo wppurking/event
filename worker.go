@@ -93,12 +93,12 @@ func (w *worker) loop() {
 			drained = true
 			timer.Reset(0)
 		case <-timer.C:
-			job, err := w.fetchMsg()
+			msg, err := w.fetchMsg()
 			if err != nil {
 				logError("worker.fetch", err)
 				timer.Reset(10 * time.Millisecond)
-			} else if job != nil {
-				w.processMsg(job)
+			} else if msg != nil {
+				w.processMsg(msg)
 				consequtiveNoMsgs = 0
 				timer.Reset(0)
 			} else {
@@ -139,7 +139,7 @@ func (w *worker) processMsg(msg *Message) {
 	if jt, ok := w.consumerTypes[msg.Name]; ok {
 		jt.incr()
 		// TODO 需要增加任务执行的 mertic
-		_, runErr := runJob(msg, w.contextType, w.middleware, jt)
+		_, runErr := runMessage(msg, w.contextType, w.middleware, jt)
 		if runErr != nil {
 			w.addToRetryOrDead(jt, msg, runErr)
 		}
@@ -148,28 +148,28 @@ func (w *worker) processMsg(msg *Message) {
 	} else {
 		// NOTE: since we don't have a consumerType, we don't know max retries
 		runErr := fmt.Errorf("stray msg: no handler")
-		logError("process_job.stray", runErr)
+		logError("process_msg.stray", runErr)
 		w.addToDead(msg, runErr)
 	}
 }
 
-func (w *worker) addToRetryOrDead(jt *consumerType, job *Message, runErr error) {
-	failsRemaining := int64(jt.MaxFails) - job.Fails()
+func (w *worker) addToRetryOrDead(jt *consumerType, msg *Message, runErr error) {
+	failsRemaining := int64(jt.MaxFails) - msg.Fails()
 	if failsRemaining > 0 {
-		w.addToRetry(job, runErr)
+		w.addToRetry(msg, runErr)
 	} else {
 		if !jt.SkipDead {
-			w.addToDead(job, runErr)
+			w.addToDead(msg, runErr)
 		}
 	}
 }
 
-func (w *worker) addToRetry(job *Message, runErr error) {
+func (w *worker) addToRetry(msg *Message, runErr error) {
 
 	var backoff BackoffCalculator
 
 	// Choose the backoff provider
-	jt, ok := w.consumerTypes[job.Name]
+	jt, ok := w.consumerTypes[msg.Name]
 	if ok {
 		backoff = jt.Backoff
 	}
@@ -177,7 +177,7 @@ func (w *worker) addToRetry(job *Message, runErr error) {
 	if backoff == nil {
 		backoff = defaultBackoffCalculator
 	}
-	err := w.enqueuer.EnqueueInMessage(job, backoff(job))
+	err := w.enqueuer.EnqueueInMessage(msg, backoff(msg))
 	if err != nil {
 		logError("worker.add_to_retry", err)
 	}

@@ -7,7 +7,7 @@ import (
 
 // returns an error if the job fails, or there's a panic, or we couldn't reflect correctly.
 // if we return an error, it signals we want the job to be retried.
-func runJob(job *Message, ctxType reflect.Type, middleware []*middlewareHandler, jt *consumerType) (returnCtx reflect.Value, returnError error) {
+func runMessage(job *Message, ctxType reflect.Type, middleware []*middlewareHandler, jt *consumerType) (returnCtx reflect.Value, returnError error) {
 	returnCtx = reflect.New(ctxType)
 	currentMiddleware := 0
 	maxMiddleware := len(middleware)
@@ -43,7 +43,7 @@ func runJob(job *Message, ctxType reflect.Type, middleware []*middlewareHandler,
 			// err turns out to be interface{}, of actual type "runtime.errorCString"
 			// Luckily, the err sprints nicely via fmt.
 			errorishError := fmt.Errorf("%v", panicErr)
-			logError("runJob.panic", errorishError)
+			logError("runMessage.panic", errorishError)
 			returnError = errorishError
 		}
 	}()
