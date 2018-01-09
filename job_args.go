@@ -1,11 +1,6 @@
 package work
 
-import (
-	"fmt"
-	"math"
-	"reflect"
-)
-
+/*
 // setArg sets a single named argument on the job.
 func (j *Job) setArg(key string, val interface{}) {
 	if j.Args == nil {
@@ -125,7 +120,4 @@ func typecastError(jsonType, key string, v interface{}) error {
 	actualType := reflect.TypeOf(v)
 	return fmt.Errorf("looking for a %s in job.Arg[%s] but value wasn't right type: %v(%v)", jsonType, key, actualType, v)
 }
-
-func withNS(namespace, s string) string {
-	return fmt.Sprintf("%s.%s", namespace, s)
-}
+*/
