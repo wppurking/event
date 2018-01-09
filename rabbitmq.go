@@ -1,13 +1,16 @@
 package event
 
 import (
+	"fmt"
+
 	"github.com/assembla/cony"
 	"github.com/streadway/amqp"
 )
 
 const (
-	retryQueue = "_retry"
-	deadQueue  = "_dead"
+	retryQueue   = "_retry"
+	deadQueue    = "_dead"
+	exchangeName = "hutch"
 )
 
 // 构建内置的 retry 与 dead queue
@@ -57,4 +60,18 @@ func buildDefaultOpt() []cony.ClientOpt {
 		cony.URL(""),
 		cony.Backoff(cony.DefaultBackoff),
 	}
+}
+
+func buildScheduleExchange(name string) cony.Exchange {
+	if len(name) == 0 {
+		return buildTopicExchange("hutch.schedule")
+	}
+	return buildTopicExchange(fmt.Sprintf("%s.schedule", name))
+}
+
+func buildTopicExchange(name string) cony.Exchange {
+	if len(name) == 0 {
+		return cony.Exchange{Name: "hutch", AutoDelete: false, Durable: true, Kind: "topic"}
+	}
+	return cony.Exchange{Name: name, AutoDelete: false, Durable: true, Kind: "topic"}
 }

@@ -12,10 +12,11 @@ import (
 
 // Publisher can enqueue jobs.
 type Publisher struct {
-	Namespace   string // eg, "myapp-work"
-	cli         *cony.Client
-	defaultExc  cony.Exchange
-	scheduleExc cony.Exchange
+	Namespace    string // eg, "myapp-work"
+	exchangeName string // 使用的 exchange name
+	cli          *cony.Client
+	defaultExc   cony.Exchange
+	scheduleExc  cony.Exchange
 
 	pub     *cony.Publisher
 	schePub *cony.Publisher
@@ -24,8 +25,12 @@ type Publisher struct {
 	mtx  sync.RWMutex
 }
 
-// NewPublisher creates a new enqueuer with the specified Redis namespace and Redis pool.
 func NewPublisher(namespace string, opts ...cony.ClientOpt) *Publisher {
+	return NewPublisherWithExchange(namespace, exchangeName, opts...)
+}
+
+// NewPublisher creates a new enqueuer with the specified Redis namespace and Redis pool.
+func NewPublisherWithExchange(namespace, exchangeName string, opts ...cony.ClientOpt) *Publisher {
 
 	defaultOpts := buildDefaultOpt()
 	if len(opts) == 0 {
@@ -34,8 +39,9 @@ func NewPublisher(namespace string, opts ...cony.ClientOpt) *Publisher {
 	defaultOpts = append(defaultOpts, opts...)
 
 	e := &Publisher{
-		Namespace: namespace,
-		cli:       cony.NewClient(defaultOpts...),
+		Namespace:    namespace,
+		exchangeName: exchangeName,
+		cli:          cony.NewClient(defaultOpts...),
 	}
 	e.newDeclears()
 	go e.loop()
@@ -43,8 +49,8 @@ func NewPublisher(namespace string, opts ...cony.ClientOpt) *Publisher {
 }
 
 func (e *Publisher) newDeclears() {
-	e.defaultExc = cony.Exchange{Name: withNS(e.Namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
-	e.scheduleExc = cony.Exchange{Name: withNS(e.Namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
+	e.defaultExc = buildTopicExchange(e.exchangeName)
+	e.scheduleExc = buildScheduleExchange(e.exchangeName)
 	e.pub = cony.NewPublisher(e.defaultExc.Name, "")
 	e.schePub = cony.NewPublisher(e.scheduleExc.Name, "")
 

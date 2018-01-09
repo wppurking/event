@@ -16,6 +16,7 @@ type WorkerPool struct {
 	workerPoolID string        // 当前 workerPool 的 ID
 	concurrency  uint          // 拥有的 workers 的总并发数量
 	namespace    string        // eg, "myapp-work"
+	exchangeName string        // exchange 的名称
 	cli          *cony.Client  // cony 的客户端, 用于保持连接
 	defaultExc   cony.Exchange // 默认发送消息的 exchange
 	scheduleExc  cony.Exchange // 用于处理 schedule 消息的 exchange
@@ -36,11 +37,15 @@ type WorkerPool struct {
 // The builtin backoff calculator provides an exponentially increasing wait function.
 type BackoffCalculator func(msg *Message) int64
 
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, puber *Publisher, opts ...cony.ClientOpt) *WorkerPool {
+	return NewWorkerPoolWithExchangeName(ctx, concurrency, namespace, exchangeName, puber, opts...)
+}
+
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
 // 期望 cli 与 enqueuer 是两个 connection, 避免并发时候的竞争
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer *Publisher, opts ...cony.ClientOpt) *WorkerPool {
-	if enqueuer == nil {
+func NewWorkerPoolWithExchangeName(ctx interface{}, concurrency uint, namespace, exchangeName string, puber *Publisher, opts ...cony.ClientOpt) *WorkerPool {
+	if puber == nil {
 		panic("NewWorkerPool needs a non-nil *Publisher")
 	}
 	// 默认的 cony 配置, url, backoff
@@ -56,20 +61,21 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 		workerPoolID:  makeIdentifier(),
 		concurrency:   concurrency,
 		namespace:     namespace,
-		enqueuer:      enqueuer,
+		exchangeName:  exchangeName,
+		enqueuer:      puber,
 		opts:          defaultOpts,
 		contextType:   ctxType,
 		consumerTypes: make(map[string]*consumerType),
 		consumers:     make(map[string]*consumer),
 	}
 	wp.cli = cony.NewClient(wp.opts...)
-	wp.defaultExc = cony.Exchange{Name: withNS(wp.namespace, "work"), AutoDelete: false, Durable: true, Kind: "topic"}
-	wp.scheduleExc = cony.Exchange{Name: withNS(wp.namespace, "work.schedule"), AutoDelete: false, Durable: true, Kind: "topic"}
+	wp.defaultExc = buildTopicExchange(wp.exchangeName)
+	wp.scheduleExc = buildScheduleExchange(wp.exchangeName)
 	builtinQueue(wp.namespace, wp.defaultExc, wp.scheduleExc, wp.cli)
 
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType,
-			nil, enqueuer,
+			nil, puber,
 			wp.consumerTypes, wp.consumers)
 		wp.workers = append(wp.workers, w)
 	}
