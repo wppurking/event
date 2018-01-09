@@ -14,7 +14,7 @@ func TestWorkerBasics(t *testing.T) {
 
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
-		Name:       job1,
+		RoutingKey:       job1,
 		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -23,7 +23,7 @@ func TestWorkerBasics(t *testing.T) {
 		},
 	}
 	consumerTypes[job2] = &consumerType{
-		Name:       job2,
+		RoutingKey:       job2,
 		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -32,7 +32,7 @@ func TestWorkerBasics(t *testing.T) {
 		},
 	}
 	consumerTypes[job3] = &consumerType{
-		Name:       job3,
+		RoutingKey:       job3,
 		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -86,7 +86,7 @@ func TestWorkerInProgress(t *testing.T) {
 
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
-		Name:       job1,
+		RoutingKey:       job1,
 		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -139,7 +139,7 @@ func TestWorkerRetry(t *testing.T) {
 
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
-		Name:       job1,
+		RoutingKey:       job1,
 		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 3},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -169,7 +169,7 @@ func TestWorkerRetry(t *testing.T) {
 	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
 	assert.True(t, ts < (nowEpochSeconds()+80)) // but less than a minute from now (first failure)
 
-	assert.Equal(t, job1, job.Name) // basics are preserved
+	assert.Equal(t, job1, job.RoutingKey) // basics are preserved
 	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
@@ -191,7 +191,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
-		Name:       job1,
+		RoutingKey:       job1,
 		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -219,7 +219,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
 	assert.True(t, ts < (nowEpochSeconds()+10)) // but less than ten secs in
 
-	assert.Equal(t, job1, job.Name) // basics are preserved
+	assert.Equal(t, job1, job.RoutingKey) // basics are preserved
 	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
@@ -238,7 +238,7 @@ func TestWorkerDead(t *testing.T) {
 
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
-		Name:       job1,
+		RoutingKey:       job1,
 		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 0},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -246,7 +246,7 @@ func TestWorkerDead(t *testing.T) {
 		},
 	}
 	consumerTypes[job2] = &consumerType{
-		Name:       job2,
+		RoutingKey:       job2,
 		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 0, SkipDead: true},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
@@ -277,7 +277,7 @@ func TestWorkerDead(t *testing.T) {
 
 	assert.True(t, ts <= nowEpochSeconds())
 
-	assert.Equal(t, job1, job.Name) // basics are preserved
+	assert.Equal(t, job1, job.RoutingKey) // basics are preserved
 	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid1", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
@@ -293,7 +293,7 @@ func TestWorkersPaused(t *testing.T) {
 
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
-		Name:       job1,
+		RoutingKey:       job1,
 		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {

@@ -39,13 +39,13 @@ func TestRunBasicMiddleware(t *testing.T) {
 	}
 
 	ct := &consumerType{
-		Name:           "foo",
+		RoutingKey:           "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
 	}
 
 	job := &Message{
-		Name: "foo",
+		RoutingKey: "foo",
 		Args: map[string]interface{}{"a": "foo"},
 	}
 
@@ -70,7 +70,7 @@ func TestRunHandlerError(t *testing.T) {
 	}
 
 	jt := &consumerType{
-		Name:           "foo",
+		RoutingKey:     "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
 	}
@@ -101,7 +101,7 @@ func TestRunMwError(t *testing.T) {
 	}
 
 	jt := &consumerType{
-		Name:           "foo",
+		RoutingKey:     "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
 	}
@@ -130,7 +130,7 @@ func TestRunHandlerPanic(t *testing.T) {
 	}
 
 	jt := &consumerType{
-		Name:           "foo",
+		RoutingKey:     "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
 	}
@@ -158,7 +158,7 @@ func TestRunMiddlewarePanic(t *testing.T) {
 	}
 
 	jt := &consumerType{
-		Name:           "foo",
+		RoutingKey:     "foo",
 		IsGeneric:      false,
 		DynamicHandler: reflect.ValueOf(h1),
 	}

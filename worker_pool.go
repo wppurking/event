@@ -114,14 +114,14 @@ func (wp *WorkerPool) Consumer(name string, fn interface{}) *WorkerPool {
 // ConsumerWithOptions adds a handler for 'name' jobs as per the Message function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 // name: 大小写不敏感
-func (wp *WorkerPool) ConsumerWithOptions(name string, consumerOpts ConsumerOptions, fn interface{}) *WorkerPool {
+func (wp *WorkerPool) ConsumerWithOptions(routingKey string, consumerOpts ConsumerOptions, fn interface{}) *WorkerPool {
 	consumerOpts = applyDefaultsAndValidate(consumerOpts)
 
-	n := strings.ToLower(name)
+	rk := strings.ToLower(routingKey)
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
 	jt := &consumerType{
-		Name:            n,
+		RoutingKey:      rk,
 		DynamicHandler:  vfn,
 		ConsumerOptions: consumerOpts,
 	}
@@ -130,8 +130,8 @@ func (wp *WorkerPool) ConsumerWithOptions(name string, consumerOpts ConsumerOpti
 		jt.GenericHandler = gh
 	}
 
-	wp.consumerTypes[n] = jt
-	wp.consumers[n] = newConsumer(wp.namespace, jt, wp.defaultExc)
+	wp.consumerTypes[rk] = jt
+	wp.consumers[rk] = newConsumer(wp.namespace, jt, wp.defaultExc)
 
 	for _, w := range wp.workers {
 		w.updateMiddlewareAndConsumerTypes(wp.middleware, wp.consumerTypes, wp.consumers)

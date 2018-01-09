@@ -21,7 +21,7 @@ func TestEnqueue(t *testing.T) {
 	ns := "work"
 	name := "wat"
 	enqueuer := NewPublisher(ns, clientOpts()...)
-	cn := newConsumer(enqueuer.Namespace, &consumerType{Name: name}, enqueuer.defaultExc)
+	cn := newConsumer(enqueuer.Namespace, &consumerType{RoutingKey: name}, enqueuer.defaultExc)
 	cn.start(enqueuer.cli)
 
 	job, err := enqueuer.Publish(name, Q{"a": 1, "b": "cool"})
@@ -92,7 +92,7 @@ func TestEnqueueIn(t *testing.T) {
 		assert.True(t, score > time.Now().Unix()+290)
 		assert.True(t, score <= time.Now().Unix()+300)
 
-		assert.Equal(t, "wat", j.Name)
+		assert.Equal(t, "wat", j.RoutingKey)
 		assert.True(t, len(j.ID) > 10)                        // Something is in it
 		assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds

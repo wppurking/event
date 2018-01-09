@@ -27,12 +27,12 @@ type ackEvent struct {
 }
 
 // 根据参数创建一个新的 consumer
-func newConsumer(namespace string, jt *consumerType, exc cony.Exchange) *consumer {
-	que := buildConyQueue(withNS(namespace, jt.Name), nil)
+func newConsumer(namespace string, ct *consumerType, exc cony.Exchange) *consumer {
+	que := buildConyQueue(withNS(namespace, ct.RoutingKey), nil)
 
 	return &consumer{
 		namespace:    namespace,
-		ct:           jt,
+		ct:           ct,
 		exc:          exc,
 		ackDeliveies: make(chan ackEvent, 500),
 		done:         make(chan int, 1),
@@ -55,8 +55,8 @@ func (c *consumer) prefetch() int {
 // 返回需要进行 Declare 的内容. Queue 与 binding 的 Declear
 func (c *consumer) Declares() (ds []cony.Declaration) {
 	ds = append(ds, cony.DeclareQueue(c.que))
-	if c.ct != nil && len(c.ct.Name) > 0 {
-		ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.ct.Name}))
+	if c.ct != nil && len(c.ct.RoutingKey) > 0 {
+		ds = append(ds, cony.DeclareBinding(cony.Binding{Queue: c.que, Exchange: c.exc, Key: c.ct.RoutingKey}))
 	}
 	return ds
 }

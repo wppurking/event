@@ -5,9 +5,10 @@ import (
 	"sync/atomic"
 )
 
-// 抽象出某一个类型的 Message, 代表了具体的 Name, 调用的方法以及相关的参数
+// consumerType 代表具体某一个 Consumer 需要执行的方法抽象.
+// RoutingKey 为具体的 RoutingKey, 调用的方法以及相关的参数
 type consumerType struct {
-	Name string
+	RoutingKey string
 	ConsumerOptions
 
 	IsGeneric      bool
