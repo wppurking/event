@@ -117,7 +117,7 @@ func (w *worker) loop() {
 	}
 }
 
-func (w *worker) fetchJob() (*Job, error) {
+func (w *worker) fetchJob() (*Message, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	for n, c := range w.consumers {
@@ -135,7 +135,7 @@ func (w *worker) fetchJob() (*Job, error) {
 	return nil, nil
 }
 
-func (w *worker) processJob(job *Job) {
+func (w *worker) processJob(job *Message) {
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		jt.incr()
 		// TODO 需要增加任务执行的 mertic
@@ -153,7 +153,7 @@ func (w *worker) processJob(job *Job) {
 	}
 }
 
-func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
+func (w *worker) addToRetryOrDead(jt *jobType, job *Message, runErr error) {
 	failsRemaining := int64(jt.MaxFails) - job.Fails()
 	if failsRemaining > 0 {
 		w.addToRetry(job, runErr)
@@ -164,7 +164,7 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 	}
 }
 
-func (w *worker) addToRetry(job *Job, runErr error) {
+func (w *worker) addToRetry(job *Message, runErr error) {
 
 	var backoff BackoffCalculator
 
@@ -177,24 +177,24 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	if backoff == nil {
 		backoff = defaultBackoffCalculator
 	}
-	err := w.enqueuer.EnqueueInJob(job, backoff(job))
+	err := w.enqueuer.EnqueueInMessage(job, backoff(job))
 	if err != nil {
 		logError("worker.add_to_retry", err)
 	}
 }
 
-func (w *worker) addToDead(job *Job, runErr error) {
+func (w *worker) addToDead(job *Message, runErr error) {
 	// TODO: 需要考虑如何解决死信队列的重新激活问题
 	job.Name = fmt.Sprintf("%s.%s", deadQueue, job.Name)
 	job.nonPersistent = true
-	err := w.enqueuer.EnqueueJob(job)
+	err := w.enqueuer.EnqueueMessage(job)
 	if err != nil {
 		logError("worker.add_to_dead.serialize", err)
 	}
 }
 
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion
-func defaultBackoffCalculator(job *Job) int64 {
+func defaultBackoffCalculator(job *Message) int64 {
 	fails := job.Fails()
 	return (fails * fails * fails * fails) + 15 + (rand.Int63n(30) * (fails + 1))
 }

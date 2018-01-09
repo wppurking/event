@@ -17,7 +17,7 @@ func TestWorkerBasics(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			arg1 = job.Args["a"].(float64)
 			return nil
 		},
@@ -26,7 +26,7 @@ func TestWorkerBasics(t *testing.T) {
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			arg2 = job.Args["a"].(float64)
 			return nil
 		},
@@ -35,7 +35,7 @@ func TestWorkerBasics(t *testing.T) {
 		Name:       job3,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			arg3 = job.Args["a"].(float64)
 			return nil
 		},
@@ -89,7 +89,7 @@ func TestWorkerInProgress(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			time.Sleep(30 * time.Millisecond)
 			return nil
 		},
@@ -142,7 +142,7 @@ func TestWorkerRetry(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid")
 		},
 	}
@@ -184,7 +184,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	deleteRetryAndDead(pool, ns)
 	calledCustom := 0
 
-	custombo := func(job *Job) int64 {
+	custombo := func(job *Message) int64 {
 		calledCustom++
 		return 5 // Always 5 seconds
 	}
@@ -194,7 +194,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid")
 		},
 	}
@@ -241,7 +241,7 @@ func TestWorkerDead(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid1")
 		},
 	}
@@ -249,7 +249,7 @@ func TestWorkerDead(t *testing.T) {
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid2")
 		},
 	}
@@ -296,7 +296,7 @@ func TestWorkersPaused(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		GenericHandler: func(job *Message) error {
 			time.Sleep(30 * time.Millisecond)
 			return nil
 		},
@@ -376,7 +376,7 @@ func BenchmarkJobProcessing(b *testing.B) {
 	}
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(c *TestContext, job *Job) error {
+	wp.Message("wat", func(c *TestContext, job *Message) error {
 		return nil
 	})
 
@@ -467,7 +467,7 @@ func hgetInt64(pool *redis.Pool, redisKey, hashKey string) int64 {
 	return v
 }
 
-func jobOnZset(pool *redis.Pool, key string) (int64, *Job) {
+func jobOnZset(pool *redis.Pool, key string) (int64, *Message) {
 	conn := pool.Get()
 	defer conn.Close()
 
@@ -492,7 +492,7 @@ func jobOnZset(pool *redis.Pool, key string) (int64, *Job) {
 	return scoreInt, job
 }
 
-func jobOnQueue(pool *redis.Pool, key string) *Job {
+func jobOnQueue(pool *redis.Pool, key string) *Message {
 	conn := pool.Get()
 	defer conn.Close()
 
@@ -586,7 +586,7 @@ func TestWorkerPoolStop(t *testing.T) {
 
 	wp := NewWorkerPool(emptyCtx{}, 2, ns, pool)
 
-	wp.Job("sample_job", func(c *emptyCtx, job *Job) error {
+	wp.Message("sample_job", func(c *emptyCtx, job *Message) error {
 		atomic.AddInt32(&started, 1)
 		time.Sleep(1 * time.Second)
 		atomic.AddInt32(&stopped, 1)

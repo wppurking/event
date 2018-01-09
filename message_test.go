@@ -71,7 +71,7 @@ func TestXdeathHeader(t *testing.T) {
 	assert.NoError(t, tb2.Validate())
 	assert.NoError(t, tb3.Validate())
 
-	j := Job{
+	j := Message{
 		Name: "foobar",
 		Delivery: &amqp.Delivery{
 			Headers: amqp.Table{
@@ -81,7 +81,7 @@ func TestXdeathHeader(t *testing.T) {
 	}
 	assert.Equal(t, int64(2), j.Fails())
 
-	j = Job{
+	j = Message{
 		Name: "foobar",
 		Delivery: &amqp.Delivery{
 			Headers: amqp.Table{

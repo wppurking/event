@@ -16,7 +16,7 @@ var enq *work.Enqueuer
 
 type context struct{}
 
-func epsilonHandler(job *work.Job) error {
+func epsilonHandler(job *work.Message) error {
 	//fmt.Println("hi")
 	//a := job.Args[0]
 	//fmt.Printf("job: %s arg: %v\n", job.Name, a)

@@ -14,7 +14,7 @@ type message struct {
 }
 
 // 输出 rabbitmq 使用的 Publishing
-func (j *Job) encode() (*message, error) {
+func (j *Message) encode() (*message, error) {
 	j.MessageId = makeIdentifier()
 	j.Timestamp = time.Now()
 	p := amqp.Publishing{
@@ -35,9 +35,9 @@ func (j *Job) encode() (*message, error) {
 	}, nil
 }
 
-// 解析出一个 Job
-func decodeJob(msg *amqp.Delivery, ack func(ev ackEvent)) *Job {
-	return &Job{
+// 解析出一个 Message
+func decodeJob(msg *amqp.Delivery, ack func(ev ackEvent)) *Message {
+	return &Message{
 		Name:     strings.ToLower(msg.RoutingKey),
 		Delivery: msg,
 		ack:      ack,

@@ -2,7 +2,7 @@ package work
 
 /*
 // setArg sets a single named argument on the job.
-func (j *Job) setArg(key string, val interface{}) {
+func (j *Message) setArg(key string, val interface{}) {
 	if j.Args == nil {
 		j.Args = make(map[string]interface{})
 	}
@@ -12,7 +12,7 @@ func (j *Job) setArg(key string, val interface{}) {
 // ArgString returns j.Args[key] typed to a string. If the key is missing or of the wrong type, it sets an argument error
 // on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
 // followed by a single call to j.ArgError().
-func (j *Job) ArgString(key string) string {
+func (j *Message) ArgString(key string) string {
 	v, ok := j.Args[key]
 	if ok {
 		typedV, ok := v.(string)
@@ -29,7 +29,7 @@ func (j *Job) ArgString(key string) string {
 // ArgInt64 returns j.Args[key] typed to an int64. If the key is missing or of the wrong type, it sets an argument error
 // on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
 // followed by a single call to j.ArgError().
-func (j *Job) ArgInt64(key string) int64 {
+func (j *Message) ArgInt64(key string) int64 {
 	v, ok := j.Args[key]
 	if ok {
 		rVal := reflect.ValueOf(v)
@@ -57,7 +57,7 @@ func (j *Job) ArgInt64(key string) int64 {
 // ArgFloat64 returns j.Args[key] typed to a float64. If the key is missing or of the wrong type, it sets an argument error
 // on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
 // followed by a single call to j.ArgError().
-func (j *Job) ArgFloat64(key string) float64 {
+func (j *Message) ArgFloat64(key string) float64 {
 	v, ok := j.Args[key]
 	if ok {
 		rVal := reflect.ValueOf(v)
@@ -78,7 +78,7 @@ func (j *Job) ArgFloat64(key string) float64 {
 // ArgBool returns j.Args[key] typed to a bool. If the key is missing or of the wrong type, it sets an argument error
 // on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
 // followed by a single call to j.ArgError().
-func (j *Job) ArgBool(key string) bool {
+func (j *Message) ArgBool(key string) bool {
 	v, ok := j.Args[key]
 	if ok {
 		typedV, ok := v.(bool)
@@ -93,7 +93,7 @@ func (j *Job) ArgBool(key string) bool {
 }
 
 // ArgError returns the last error generated when extracting typed params. Returns nil if extracting the args went fine.
-func (j *Job) ArgError() error {
+func (j *Message) ArgError() error {
 	return j.argError
 }
 

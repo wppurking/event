@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 )
 
-// 抽象出某一个类型的 Job, 代表了具体的 Name, 调用的方法以及相关的参数
+// 抽象出某一个类型的 Message, 代表了具体的 Name, 调用的方法以及相关的参数
 type jobType struct {
 	Name string
 	JobOptions
@@ -30,4 +30,4 @@ func (jt *jobType) Runs() uint {
 }
 
 // GenericHandler is a job handler without any custom context.
-type GenericHandler func(*Job) error
+type GenericHandler func(*Message) error

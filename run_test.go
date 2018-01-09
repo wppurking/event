@@ -10,23 +10,23 @@ import (
 
 /*
 func TestRunBasicMiddleware(t *testing.T) {
-	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+	mw1 := func(j *Message, next NextMiddlewareFunc) error {
 		j.setArg("mw1", "mw1")
 		return next()
 	}
 
-	mw2 := func(c *tstCtx, j *Job, next NextMiddlewareFunc) error {
+	mw2 := func(c *tstCtx, j *Message, next NextMiddlewareFunc) error {
 		c.record(j.Args["mw1"].(string))
 		c.record("mw2")
 		return next()
 	}
 
-	mw3 := func(c *tstCtx, j *Job, next NextMiddlewareFunc) error {
+	mw3 := func(c *tstCtx, j *Message, next NextMiddlewareFunc) error {
 		c.record("mw3")
 		return next()
 	}
 
-	h1 := func(c *tstCtx, j *Job) error {
+	h1 := func(c *tstCtx, j *Message) error {
 		c.record("h1")
 		c.record(j.Args["a"].(string))
 		return nil
@@ -44,7 +44,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 		DynamicHandler: reflect.ValueOf(h1),
 	}
 
-	job := &Job{
+	job := &Message{
 		Name: "foo",
 		Args: map[string]interface{}{"a": "foo"},
 	}
@@ -57,10 +57,10 @@ func TestRunBasicMiddleware(t *testing.T) {
 */
 
 func TestRunHandlerError(t *testing.T) {
-	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+	mw1 := func(j *Message, next NextMiddlewareFunc) error {
 		return next()
 	}
-	h1 := func(c *tstCtx, j *Job) error {
+	h1 := func(c *tstCtx, j *Message) error {
 		c.record("h1")
 		return fmt.Errorf("h1_err")
 	}
@@ -75,7 +75,7 @@ func TestRunHandlerError(t *testing.T) {
 		DynamicHandler: reflect.ValueOf(h1),
 	}
 
-	job := &Job{
+	job := &Message{
 		Name: "foo",
 	}
 
@@ -88,10 +88,10 @@ func TestRunHandlerError(t *testing.T) {
 }
 
 func TestRunMwError(t *testing.T) {
-	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+	mw1 := func(j *Message, next NextMiddlewareFunc) error {
 		return fmt.Errorf("mw1_err")
 	}
-	h1 := func(c *tstCtx, j *Job) error {
+	h1 := func(c *tstCtx, j *Message) error {
 		c.record("h1")
 		return fmt.Errorf("h1_err")
 	}
@@ -106,7 +106,7 @@ func TestRunMwError(t *testing.T) {
 		DynamicHandler: reflect.ValueOf(h1),
 	}
 
-	job := &Job{
+	job := &Message{
 		Name: "foo",
 	}
 
@@ -116,10 +116,10 @@ func TestRunMwError(t *testing.T) {
 }
 
 func TestRunHandlerPanic(t *testing.T) {
-	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+	mw1 := func(j *Message, next NextMiddlewareFunc) error {
 		return next()
 	}
-	h1 := func(c *tstCtx, j *Job) error {
+	h1 := func(c *tstCtx, j *Message) error {
 		c.record("h1")
 
 		panic("dayam")
@@ -135,7 +135,7 @@ func TestRunHandlerPanic(t *testing.T) {
 		DynamicHandler: reflect.ValueOf(h1),
 	}
 
-	job := &Job{
+	job := &Message{
 		Name: "foo",
 	}
 
@@ -145,10 +145,10 @@ func TestRunHandlerPanic(t *testing.T) {
 }
 
 func TestRunMiddlewarePanic(t *testing.T) {
-	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+	mw1 := func(j *Message, next NextMiddlewareFunc) error {
 		panic("dayam")
 	}
-	h1 := func(c *tstCtx, j *Job) error {
+	h1 := func(c *tstCtx, j *Message) error {
 		c.record("h1")
 		return nil
 	}
@@ -163,7 +163,7 @@ func TestRunMiddlewarePanic(t *testing.T) {
 		DynamicHandler: reflect.ValueOf(h1),
 	}
 
-	job := &Job{
+	job := &Message{
 		Name: "foo",
 	}
 

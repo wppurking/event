@@ -98,7 +98,7 @@ func (c *consumer) ack(ev ackEvent) {
 }
 
 // Peek 一个任务
-func (c *consumer) Peek() (*Job, error) {
+func (c *consumer) Peek() (*Message, error) {
 	if c.c == nil {
 		return nil, nil
 	}
@@ -113,7 +113,7 @@ func (c *consumer) Peek() (*Job, error) {
 }
 
 // Pop 阻塞的获取一个任务
-func (c *consumer) Pop() (*Job, error) {
+func (c *consumer) Pop() (*Message, error) {
 	if c.c == nil {
 		return nil, nil
 	}

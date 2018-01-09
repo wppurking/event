@@ -4,7 +4,7 @@ type TestContext struct{}
 
 /*
 func TestJobArgumentExtraction(t *testing.T) {
-	j := Job{}
+	j := Message{}
 	j.setArg("str1", "bar")
 
 	j.setArg("int1", int64(77))
@@ -94,7 +94,7 @@ func TestJobArgumentExtractionBadString(t *testing.T) {
 		{"c", "yay", true},
 	}
 
-	j := Job{}
+	j := Message{}
 
 	for _, tc := range testCases {
 		j.setArg(tc.key, tc.val)
@@ -134,7 +134,7 @@ func TestJobArgumentExtractionBadBool(t *testing.T) {
 		{"d", false, true},
 	}
 
-	j := Job{}
+	j := Message{}
 
 	for _, tc := range testCases {
 		j.setArg(tc.key, tc.val)
@@ -183,7 +183,7 @@ func TestJobArgumentExtractionBadInt(t *testing.T) {
 		{"u", uint64(math.MaxInt64), true},
 	}
 
-	j := Job{}
+	j := Message{}
 
 	for _, tc := range testCases {
 		j.setArg(tc.key, tc.val)
@@ -226,7 +226,7 @@ func TestJobArgumentExtractionBadFloat(t *testing.T) {
 		{"t", math.SmallestNonzeroFloat64, true},
 	}
 
-	j := Job{}
+	j := Message{}
 
 	for _, tc := range testCases {
 		j.setArg(tc.key, tc.val)

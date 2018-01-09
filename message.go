@@ -7,8 +7,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Job represents a job.
-type Job struct {
+// Message represents a job.
+type Message struct {
 	*amqp.Delivery `json:"-"`
 
 	// Inputs when making a new job
@@ -23,7 +23,7 @@ type Job struct {
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com", "track": true})
 type Q map[string]interface{}
 
-func (j *Job) Ack() bool {
+func (j *Message) Ack() bool {
 	if j.ack == nil {
 		return false
 	}
@@ -31,7 +31,7 @@ func (j *Job) Ack() bool {
 	return true
 }
 
-func (j *Job) Nack() bool {
+func (j *Message) Nack() bool {
 	if j.ack == nil {
 		return false
 	}
@@ -39,7 +39,7 @@ func (j *Job) Nack() bool {
 	return true
 }
 
-func (j *Job) Reject() bool {
+func (j *Message) Reject() bool {
 	if j.ack == nil {
 		return false
 	}
@@ -47,12 +47,12 @@ func (j *Job) Reject() bool {
 	return true
 }
 
-func (j *Job) serialize() ([]byte, error) {
+func (j *Message) serialize() ([]byte, error) {
 	return jsoniter.Marshal(j)
 }
 
 // Fails 返回从 x-dead header 信息中记录的重试记录
-func (j *Job) Fails() int64 {
+func (j *Message) Fails() int64 {
 	// refs: https://github.com/wppurking/hutch-schedule/blob/master/lib/hutch/error_handlers/max_retry.rb
 	if j.fails > 0 {
 		return j.fails
@@ -94,20 +94,8 @@ func (j *Job) Fails() int64 {
 	return 0
 }
 
-// RetryJob represents a job in the retry queue.
-type RetryJob struct {
-	RetryAt int64 `json:"retry_at"`
-	*Job
-}
-
 // ScheduledJob represents a job in the scheduled queue.
 type ScheduledJob struct {
 	RunAt int64 `json:"run_at"`
-	*Job
-}
-
-// DeadJob represents a job in the dead queue.
-type DeadJob struct {
-	DiedAt int64 `json:"died_at"`
-	*Job
+	*Message
 }

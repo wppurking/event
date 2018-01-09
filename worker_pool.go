@@ -36,7 +36,7 @@ type WorkerPool struct {
 // Returns the number of seconds to wait until the next attempt.
 //
 // The builtin backoff calculator provides an exponentially increasing wait function.
-type BackoffCalculator func(job *Job) int64
+type BackoffCalculator func(job *Message) int64
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
@@ -79,8 +79,8 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, enqueuer
 }
 
 // Middleware appends the specified function to the middleware chain. The fn can take one of these forms:
-// (*ContextType).func(*Job, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
-// func(*Job, NextMiddlewareFunc) error, for the generic middleware format.
+// (*ContextType).func(*Message, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
+// func(*Message, NextMiddlewareFunc) error, for the generic middleware format.
 func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	vfn := reflect.ValueOf(fn)
 	validateMiddlewareType(wp.contextType, vfn)
@@ -89,7 +89,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 		DynamicMiddleware: vfn,
 	}
 
-	if gmh, ok := fn.(func(*Job, NextMiddlewareFunc) error); ok {
+	if gmh, ok := fn.(func(*Message, NextMiddlewareFunc) error); ok {
 		mw.IsGeneric = true
 		mw.GenericMiddlewareHandler = gmh
 	}
@@ -103,15 +103,15 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	return wp
 }
 
-// Job registers the job name to the specified handler fn. For instance, when workers pull jobs from the name queue they'll be processed by the specified handler function.
+// Message registers the job name to the specified handler fn. For instance, when workers pull jobs from the name queue they'll be processed by the specified handler function.
 // fn can take one of these forms:
-// (*ContextType).func(*Job) error, (ContextType matches the type of ctx specified when creating a pool)
-// func(*Job) error, for the generic handler format.
+// (*ContextType).func(*Message) error, (ContextType matches the type of ctx specified when creating a pool)
+// func(*Message) error, for the generic handler format.
 func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
 	return wp.JobWithOptions(name, JobOptions{}, fn)
 }
 
-// JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options
+// JobWithOptions adds a handler for 'name' jobs as per the Message function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 // name: 大小写不敏感
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
@@ -125,7 +125,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 		DynamicHandler: vfn,
 		JobOptions:     jobOpts,
 	}
-	if gh, ok := fn.(func(*Job) error); ok {
+	if gh, ok := fn.(func(*Message) error); ok {
 		jt.IsGeneric = true
 		jt.GenericHandler = gh
 	}
@@ -227,13 +227,13 @@ func validateContextType(ctxType reflect.Type) {
 
 func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {
 	if !isValidHandlerType(ctxType, vfn) {
-		panic(instructiveMessage(vfn, "a handler", "handler", "job *work.Job", ctxType))
+		panic(instructiveMessage(vfn, "a handler", "handler", "job *work.Message", ctxType))
 	}
 }
 
 func validateMiddlewareType(ctxType reflect.Type, vfn reflect.Value) {
 	if !isValidMiddlewareType(ctxType, vfn) {
-		panic(instructiveMessage(vfn, "middleware", "middleware", "job *work.Job, next NextMiddlewareFunc", ctxType))
+		panic(instructiveMessage(vfn, "middleware", "middleware", "job *work.Message, next NextMiddlewareFunc", ctxType))
 	}
 }
 
@@ -295,7 +295,7 @@ func isValidHandlerType(ctxType reflect.Type, vfn reflect.Value) bool {
 		return false
 	}
 
-	var j *Job
+	var j *Message
 	if numIn == 1 {
 		if fnType.In(0) != reflect.TypeOf(j) {
 			return false
@@ -335,7 +335,7 @@ func isValidMiddlewareType(ctxType reflect.Type, vfn reflect.Value) bool {
 		return false
 	}
 
-	var j *Job
+	var j *Message
 	var nfn NextMiddlewareFunc
 	if numIn == 2 {
 		if fnType.In(0) != reflect.TypeOf(j) {

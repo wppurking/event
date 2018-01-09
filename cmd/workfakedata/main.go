@@ -12,7 +12,7 @@ import (
 var rabbitMqURL = flag.String("amqp", "amqp://guest:guest@localhost:5672/", "amqp url")
 var namespace = flag.String("ns", "work", "namespace")
 
-func epsilonHandler(job *work.Job) error {
+func epsilonHandler(job *work.Message) error {
 	fmt.Println("epsilon")
 	time.Sleep(time.Second)
 
@@ -37,7 +37,7 @@ func main() {
 
 	wp := work.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
 	wp.JobWithOptions("foobar", work.JobOptions{MaxFails: 3, Prefetch: 30}, epsilonHandler)
-	//wp.Job("foobar", epsilonHandler)
+	//wp.Message("foobar", epsilonHandler)
 	wp.Start()
 
 	select {}

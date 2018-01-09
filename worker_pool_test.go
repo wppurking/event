@@ -28,15 +28,15 @@ func TestWorkerPoolHandlerValidations(t *testing.T) {
 		fn   interface{}
 		good bool
 	}{
-		{func(j *Job) error { return nil }, true},
-		{func(c *tstCtx, j *Job) error { return nil }, true},
-		{func(c *tstCtx, j *Job) {}, false},
-		{func(c *tstCtx, j *Job) string { return "" }, false},
-		{func(c *tstCtx, j *Job) (error, string) { return nil, "" }, false},
+		{func(j *Message) error { return nil }, true},
+		{func(c *tstCtx, j *Message) error { return nil }, true},
+		{func(c *tstCtx, j *Message) {}, false},
+		{func(c *tstCtx, j *Message) string { return "" }, false},
+		{func(c *tstCtx, j *Message) (error, string) { return nil, "" }, false},
 		{func(c *tstCtx) error { return nil }, false},
-		{func(c tstCtx, j *Job) error { return nil }, false},
+		{func(c tstCtx, j *Message) error { return nil }, false},
 		{func() error { return nil }, false},
-		{func(c *tstCtx, j *Job, wat string) error { return nil }, false},
+		{func(c *tstCtx, j *Message, wat string) error { return nil }, false},
 	}
 
 	for i, testCase := range cases {
@@ -52,17 +52,17 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 		fn   interface{}
 		good bool
 	}{
-		{func(j *Job, n NextMiddlewareFunc) error { return nil }, true},
-		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) error { return nil }, true},
-		{func(c *tstCtx, j *Job) error { return nil }, false},
-		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) {}, false},
-		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) string { return "" }, false},
-		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) (error, string) { return nil, "" }, false},
+		{func(j *Message, n NextMiddlewareFunc) error { return nil }, true},
+		{func(c *tstCtx, j *Message, n NextMiddlewareFunc) error { return nil }, true},
+		{func(c *tstCtx, j *Message) error { return nil }, false},
+		{func(c *tstCtx, j *Message, n NextMiddlewareFunc) {}, false},
+		{func(c *tstCtx, j *Message, n NextMiddlewareFunc) string { return "" }, false},
+		{func(c *tstCtx, j *Message, n NextMiddlewareFunc) (error, string) { return nil, "" }, false},
 		{func(c *tstCtx, n NextMiddlewareFunc) error { return nil }, false},
-		{func(c tstCtx, j *Job, n NextMiddlewareFunc) error { return nil }, false},
+		{func(c tstCtx, j *Message, n NextMiddlewareFunc) error { return nil }, false},
 		{func() error { return nil }, false},
-		{func(c *tstCtx, j *Job, wat string) error { return nil }, false},
-		{func(c *tstCtx, j *Job, n NextMiddlewareFunc, wat string) error { return nil }, false},
+		{func(c *tstCtx, j *Message, wat string) error { return nil }, false},
+		{func(c *tstCtx, j *Message, n NextMiddlewareFunc, wat string) error { return nil }, false},
 	}
 
 	for i, testCase := range cases {
@@ -122,7 +122,7 @@ func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
 }
 
 // Test Helpers
-func (t *TestContext) SleepyJob(job *Job) error {
+func (t *TestContext) SleepyJob(job *Message) error {
 	msg := Q{}
 	jsoniter.Unmarshal(job.Body, &msg)
 	sleepTime := time.Duration(msg["sleep"].(int))

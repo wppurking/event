@@ -74,61 +74,57 @@ func (e *Enqueuer) loop() {
 	}
 }
 
-func (e *Enqueuer) map2Job(routingKey string, msg interface{}) (*Job, error) {
+func (e *Enqueuer) map2Msg(routingKey string, msg interface{}) (*Message, error) {
 	body, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 	// 将 msg 转换为 []byte 借用 Delivery 压入 RabbitMQ
-	job := &Job{
+	return &Message{
 		Name:     routingKey,
 		Delivery: &amqp.Delivery{Body: body},
-	}
-	return job, nil
+	}, nil
 }
 
 // Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(routingKey string, msg interface{}) (*Job, error) {
-	job, err := e.map2Job(routingKey, msg)
+func (e *Enqueuer) Enqueue(routingKey string, msg interface{}) (*Message, error) {
+	evt, err := e.map2Msg(routingKey, msg)
 	if err != nil {
 		return nil, err
 	}
-	err = e.EnqueueJob(job)
+	err = e.EnqueueMessage(evt)
 	if err != nil {
 		return nil, err
 	}
-	return job, nil
+	return evt, nil
 }
 
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
-func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*ScheduledJob, error) {
-	job, err := e.map2Job(routingKey, msg)
+func (e *Enqueuer) EnqueueIn(routingKey string, secondsFromNow int64, msg map[string]interface{}) (*Message, error) {
+	evt, err := e.map2Msg(routingKey, msg)
 	if err != nil {
 		return nil, err
 	}
-	err = e.EnqueueInJob(job, secondsFromNow)
+	err = e.EnqueueInMessage(evt, secondsFromNow)
 	if err != nil {
 		return nil, err
 	}
-	return &ScheduledJob{
-		RunAt: nowEpochSeconds() + secondsFromNow,
-		Job:   job,
-	}, nil
+	return evt, nil
 }
 
-// EnqueueJob 压入一个 job 任务
-func (e *Enqueuer) EnqueueJob(job *Job) error {
-	msg, err := job.encode()
+// EnqueueMessage 压入一个 job 任务
+func (e *Enqueuer) EnqueueMessage(msg *Message) error {
+	m, err := msg.encode()
 	if err != nil {
 		return err
 	}
 
-	return e.pub.PublishWithRoutingKey(msg.pub, msg.routingKey)
+	return e.pub.PublishWithRoutingKey(m.pub, m.routingKey)
 }
 
-// EnqueueInJob 压入延时的 job
-func (e *Enqueuer) EnqueueInJob(job *Job, secondsFromNow int64) error {
+// EnqueueInMessage 压入延时的 job
+func (e *Enqueuer) EnqueueInMessage(job *Message, secondsFromNow int64) error {
 	msg, err := job.encode()
 	if err != nil {
 		return err
