@@ -49,7 +49,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 		Args: map[string]interface{}{"a": "foo"},
 	}
 
-	v, err := runMessage(job, tstCtxType, middleware, ct)
+	v, err := handleMessage(job, tstCtxType, middleware, ct)
 	assert.NoError(t, err)
 	c := v.Interface().(*tstCtx)
 	assert.Equal(t, "mw1mw2mw3h1foo", c.String())
@@ -79,7 +79,7 @@ func TestRunHandlerError(t *testing.T) {
 		Name: "foo",
 	}
 
-	v, err := runMessage(job, tstCtxType, middleware, jt)
+	v, err := handleMessage(job, tstCtxType, middleware, jt)
 	assert.Error(t, err)
 	assert.Equal(t, "h1_err", err.Error())
 
@@ -110,7 +110,7 @@ func TestRunMwError(t *testing.T) {
 		Name: "foo",
 	}
 
-	_, err := runMessage(job, tstCtxType, middleware, jt)
+	_, err := handleMessage(job, tstCtxType, middleware, jt)
 	assert.Error(t, err)
 	assert.Equal(t, "mw1_err", err.Error())
 }
@@ -139,7 +139,7 @@ func TestRunHandlerPanic(t *testing.T) {
 		Name: "foo",
 	}
 
-	_, err := runMessage(job, tstCtxType, middleware, jt)
+	_, err := handleMessage(job, tstCtxType, middleware, jt)
 	assert.Error(t, err)
 	assert.Equal(t, "dayam", err.Error())
 }
@@ -167,7 +167,7 @@ func TestRunMiddlewarePanic(t *testing.T) {
 		Name: "foo",
 	}
 
-	_, err := runMessage(job, tstCtxType, middleware, jt)
+	_, err := handleMessage(job, tstCtxType, middleware, jt)
 	assert.Error(t, err)
 	assert.Equal(t, "dayam", err.Error())
 }

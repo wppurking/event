@@ -139,7 +139,7 @@ func (w *worker) processMsg(msg *Message) {
 	if jt, ok := w.consumerTypes[msg.Name]; ok {
 		jt.incr()
 		// TODO 需要增加任务执行的 mertic
-		_, runErr := runMessage(msg, w.contextType, w.middleware, jt)
+		_, runErr := handleMessage(msg, w.contextType, w.middleware, jt)
 		if runErr != nil {
 			w.addToRetryOrDead(jt, msg, runErr)
 		}
