@@ -2,8 +2,8 @@ package work
 
 import "fmt"
 
-// JobOptions can be passed to JobWithOptions.
-type JobOptions struct {
+// ConsumerOptions can be passed to ConsumerWithOptions.
+type ConsumerOptions struct {
 	Prefetch       int               // 指定队列的 Prefetch 数量
 	Priority       uint              // Priority from 1 to 10000
 	MaxFails       uint              // 1: send straight to dead (unless SkipDead)

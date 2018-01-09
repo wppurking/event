@@ -111,7 +111,7 @@ func TestWorkerPoolValidations(t *testing.T) {
 			}
 		}()
 
-		wp.Job("wat", TestWorkerPoolValidations)
+		wp.Consumer("wat", TestWorkerPoolValidations)
 	}()
 }
 
@@ -131,13 +131,13 @@ func (t *TestContext) SleepyJob(job *Message) error {
 }
 
 /*
-func setupTestWorkerPool(pool *redis.Pool, namespace, jobName string, concurrency int, jobOpts JobOptions) *WorkerPool {
+func setupTestWorkerPool(pool *redis.Pool, namespace, jobName string, concurrency int, jobOpts ConsumerOptions) *WorkerPool {
 	deleteQueue(pool, namespace, jobName)
 	deleteRetryAndDead(pool, namespace)
 	deletePausedAndLockedKeys(namespace, jobName, pool)
 
 	wp := NewWorkerPool(TestContext{}, uint(concurrency), namespace, pool)
-	wp.JobWithOptions(jobName, jobOpts, (*TestContext).SleepyJob)
+	wp.ConsumerWithOptions(jobName, jobOpts, (*TestContext).SleepyJob)
 	// reset the backoff times to help with testing
 	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
 	return wp

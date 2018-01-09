@@ -43,7 +43,7 @@ func main() {
 	workerPool := work.NewWorkerPool(context{}, 20,
 		namespace, enq, cony.URL(rabbitMqURL))
 	for _, jobName := range jobNames {
-		workerPool.Job(jobName, epsilonHandler)
+		workerPool.Consumer(jobName, epsilonHandler)
 	}
 	go monitor()
 

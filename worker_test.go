@@ -15,7 +15,7 @@ func TestWorkerBasics(t *testing.T) {
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
 		Name:       job1,
-		JobOptions: JobOptions{Priority: 1},
+		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			arg1 = job.Args["a"].(float64)
@@ -24,7 +24,7 @@ func TestWorkerBasics(t *testing.T) {
 	}
 	consumerTypes[job2] = &consumerType{
 		Name:       job2,
-		JobOptions: JobOptions{Priority: 1},
+		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			arg2 = job.Args["a"].(float64)
@@ -33,7 +33,7 @@ func TestWorkerBasics(t *testing.T) {
 	}
 	consumerTypes[job3] = &consumerType{
 		Name:       job3,
-		JobOptions: JobOptions{Priority: 1},
+		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			arg3 = job.Args["a"].(float64)
@@ -87,7 +87,7 @@ func TestWorkerInProgress(t *testing.T) {
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
 		Name:       job1,
-		JobOptions: JobOptions{Priority: 1},
+		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			time.Sleep(30 * time.Millisecond)
@@ -140,7 +140,7 @@ func TestWorkerRetry(t *testing.T) {
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
 		Name:       job1,
-		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
+		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 3},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid")
@@ -192,7 +192,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
 		Name:       job1,
-		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
+		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid")
@@ -239,7 +239,7 @@ func TestWorkerDead(t *testing.T) {
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
 		Name:       job1,
-		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
+		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 0},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid1")
@@ -247,7 +247,7 @@ func TestWorkerDead(t *testing.T) {
 	}
 	consumerTypes[job2] = &consumerType{
 		Name:       job2,
-		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
+		ConsumerOptions: ConsumerOptions{Priority: 1, MaxFails: 0, SkipDead: true},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			return fmt.Errorf("sorry kid2")
@@ -294,7 +294,7 @@ func TestWorkersPaused(t *testing.T) {
 	consumerTypes := make(map[string]*consumerType)
 	consumerTypes[job1] = &consumerType{
 		Name:       job1,
-		JobOptions: JobOptions{Priority: 1},
+		ConsumerOptions: ConsumerOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Message) error {
 			time.Sleep(30 * time.Millisecond)

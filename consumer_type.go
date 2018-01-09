@@ -8,7 +8,7 @@ import (
 // 抽象出某一个类型的 Message, 代表了具体的 Name, 调用的方法以及相关的参数
 type consumerType struct {
 	Name string
-	JobOptions
+	ConsumerOptions
 
 	IsGeneric      bool
 	GenericHandler GenericHandler // GenericHandler 不需要动态初始化 Context 的最普通的方法

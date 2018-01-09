@@ -36,7 +36,7 @@ type WorkerPool struct {
 // Returns the number of seconds to wait until the next attempt.
 //
 // The builtin backoff calculator provides an exponentially increasing wait function.
-type BackoffCalculator func(job *Message) int64
+type BackoffCalculator func(msg *Message) int64
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
@@ -107,23 +107,23 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 // fn can take one of these forms:
 // (*ContextType).func(*Message) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Message) error, for the generic handler format.
-func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
-	return wp.JobWithOptions(name, JobOptions{}, fn)
+func (wp *WorkerPool) Consumer(name string, fn interface{}) *WorkerPool {
+	return wp.ConsumerWithOptions(name, ConsumerOptions{}, fn)
 }
 
-// JobWithOptions adds a handler for 'name' jobs as per the Message function, but permits you specify additional options
+// ConsumerWithOptions adds a handler for 'name' jobs as per the Message function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 // name: 大小写不敏感
-func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
+func (wp *WorkerPool) ConsumerWithOptions(name string, jobOpts ConsumerOptions, fn interface{}) *WorkerPool {
 	jobOpts = applyDefaultsAndValidate(jobOpts)
 
 	n := strings.ToLower(name)
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
 	jt := &consumerType{
-		Name:           n,
-		DynamicHandler: vfn,
-		JobOptions:     jobOpts,
+		Name:            n,
+		DynamicHandler:  vfn,
+		ConsumerOptions: jobOpts,
 	}
 	if gh, ok := fn.(func(*Message) error); ok {
 		jt.IsGeneric = true
@@ -361,18 +361,18 @@ func isValidMiddlewareType(ctxType reflect.Type, vfn reflect.Value) bool {
 	return true
 }
 
-func applyDefaultsAndValidate(jobOpts JobOptions) JobOptions {
-	if jobOpts.Priority == 0 {
-		jobOpts.Priority = 1
+func applyDefaultsAndValidate(consumerOpts ConsumerOptions) ConsumerOptions {
+	if consumerOpts.Priority == 0 {
+		consumerOpts.Priority = 1
 	}
 
-	if jobOpts.MaxFails == 0 {
-		jobOpts.MaxFails = 4
+	if consumerOpts.MaxFails == 0 {
+		consumerOpts.MaxFails = 4
 	}
 
-	if jobOpts.Priority > 100000 {
-		panic("work: JobOptions.Priority must be between 1 and 100000")
+	if consumerOpts.Priority > 100000 {
+		panic("work: ConsumerOptions.Priority must be between 1 and 100000")
 	}
 
-	return jobOpts
+	return consumerOpts
 }

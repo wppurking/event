@@ -36,7 +36,7 @@ func main() {
 	go enqueues(enq)
 
 	wp := work.NewWorkerPool(context{}, 5, *namespace, enq, cony.URL(*rabbitMqURL))
-	wp.JobWithOptions("foobar", work.JobOptions{MaxFails: 3, Prefetch: 30}, epsilonHandler)
+	wp.ConsumerWithOptions("foobar", work.ConsumerOptions{MaxFails: 3, Prefetch: 30}, epsilonHandler)
 	//wp.Message("foobar", epsilonHandler)
 	wp.Start()
 
