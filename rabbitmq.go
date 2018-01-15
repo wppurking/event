@@ -77,8 +77,9 @@ func buildScheduleExchange(name string) cony.Exchange {
 }
 
 func buildTopicExchange(name string) cony.Exchange {
+	vname := name
 	if len(name) == 0 {
-		return cony.Exchange{Name: exchangeName, AutoDelete: false, Durable: true, Kind: "topic"}
+		vname = exchangeName
 	}
-	return cony.Exchange{Name: name, AutoDelete: false, Durable: true, Kind: "topic"}
+	return cony.Exchange{Name: vname, AutoDelete: false, Durable: true, Kind: "topic"}
 }
