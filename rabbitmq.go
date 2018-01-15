@@ -9,10 +9,15 @@ import (
 
 const (
 	// TODO: retryQueue 与 deadQueue 都需要与 hutch, hutch-schedule 命名同规则, 这样才可以整合使用
-	retryQueue   = "_retry"
-	deadQueue    = "_dead"
+	retryQueue   = "dead_queue"
+	deadQueue    = "schedule_queue"
 	exchangeName = "hutch"
 )
+
+// 构建 buildin 重试/retry 的队列
+func buildinQueueName(exName, sufix string) string {
+	return fmt.Sprintf("%s_%s", exName, sufix)
+}
 
 // 构建内置的 retry 与 dead queue
 func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.Client) {
@@ -23,7 +28,7 @@ func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.
 	// - 最长超过 30 天重新投递
 	// - 重新投递到默认的 exchange
 	retryQue := buildConyQueue(
-		withNS(ns, retryQueue),
+		buildinQueueName(exc.Name, retryQueue),
 		amqp.Table{"x-message-ttl": oneMonth, "x-dead-letter-exchange": exc.Name},
 	)
 	retryBnd := cony.Binding{Queue: retryQue, Exchange: schExc, Key: "#"}
@@ -32,7 +37,7 @@ func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.
 	// - 消息超过 30 天放弃
 	// - 超过 10w 条消息放弃
 	deadQue := buildConyQueue(
-		withNS(ns, deadQueue),
+		buildinQueueName(exc.Name, deadQueue),
 		amqp.Table{"x-message-ttl": oneMonth, "x-max-length": int64(100000)},
 	)
 	deadBnd := cony.Binding{Queue: deadQue, Exchange: exc, Key: deadQueue + ".#"}
@@ -64,15 +69,16 @@ func buildDefaultOpt() []cony.ClientOpt {
 }
 
 func buildScheduleExchange(name string) cony.Exchange {
+	vname := name
 	if len(name) == 0 {
-		return buildTopicExchange("hutch.schedule")
+		vname = exchangeName
 	}
-	return buildTopicExchange(fmt.Sprintf("%s.schedule", name))
+	return buildTopicExchange(fmt.Sprintf("%s.schedule", vname))
 }
 
 func buildTopicExchange(name string) cony.Exchange {
 	if len(name) == 0 {
-		return cony.Exchange{Name: "hutch", AutoDelete: false, Durable: true, Kind: "topic"}
+		return cony.Exchange{Name: exchangeName, AutoDelete: false, Durable: true, Kind: "topic"}
 	}
 	return cony.Exchange{Name: name, AutoDelete: false, Durable: true, Kind: "topic"}
 }
