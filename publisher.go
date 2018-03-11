@@ -70,7 +70,7 @@ func (e *Publisher) loop() {
 		case err := <-e.cli.Errors():
 			e, ok := err.(*amqp.Error)
 			if ok && e == nil {
-				fmt.Printf("停止客户端, 退出 loop: %v\n", e)
+				fmt.Println("停止客户端, 退出 loop")
 				return
 			} else {
 				fmt.Println("enqueuer:", err)

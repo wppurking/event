@@ -118,6 +118,7 @@ func (wp *WorkerPool) Consumer(name string, fn interface{}) *WorkerPool {
 // ConsumerWithOptions adds a handler for 'name' jobs as per the Message function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 // name: 大小写不敏感
+// TODO: 让 Consumer 可以动态被添加, 这样可以在运行时添加新的 consumer
 func (wp *WorkerPool) ConsumerWithOptions(routingKey string, consumerOpts ConsumerOptions, fn interface{}) *WorkerPool {
 	consumerOpts = applyDefaultsAndValidate(consumerOpts)
 
@@ -134,6 +135,7 @@ func (wp *WorkerPool) ConsumerWithOptions(routingKey string, consumerOpts Consum
 		ct.GenericHandler = gh
 	}
 
+	// TODO 检查 rk 是否已经存在, 如果已经存在则需要抛出并放弃保存
 	wp.consumerTypes[rk] = ct
 	wp.consumers[rk] = newConsumer(wp.namespace, ct, wp.defaultExc)
 
@@ -214,7 +216,7 @@ func (wp *WorkerPool) observerDeclears() {
 		case err := <-wp.cli.Errors():
 			e, ok := err.(*amqp.Error)
 			if ok && e == nil {
-				fmt.Printf("停止客户端, 退出 loop: %v\n", e)
+				fmt.Println("停止客户端, 退出 loop")
 				return
 			} else {
 				fmt.Println("err:", err)

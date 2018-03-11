@@ -119,6 +119,7 @@ func (w *worker) loop() {
 func (w *worker) fetchMsg() (*Message, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
+	// TODO 这里已经在随机获取 consumer, 如果 consumer 的量上升到 10w 级别会如何?
 	for n, c := range w.consumers {
 		if ct, ok := w.consumerTypes[n]; ok && ct.MaxConcurrency > 0 && ct.Runs() >= ct.MaxConcurrency {
 			continue
