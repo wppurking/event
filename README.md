@@ -1,15 +1,8 @@
 # wppurking/event [![GoDoc](https://godoc.org/github.com/wppurking/event?status.png)](https://godoc.org/github.com/wppurking/event)
 
-wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 虽然可以涵盖部分 background job 的范畴, 但其核心为
-尽可能的利用 RabbitMQ 本身的特性用于处理 JSON 格式的 Message 消息. 代码 fork 自 [gocraft/work](https://github.com/gocraft/work), 并且受到
- [Hutch](https://github.com/gocardless/hutch) 与 [Hutch-schedule](https://github.com/wppurking/hutch-schedule) 的影响.
-
-* Fast and efficient. Faster than [this](https://www.github.com/jrallison/go-workers), [this](https://www.github.com/benmanns/goworker), and [this](https://www.github.com/albrow/jobs). See below for benchmarks.
-* Reliable - don't lose event even if your process crashes. [rabbitmq ack, dlx, ttl]
-* Middleware on events -- good for metrics instrumentation, logging, etc.
-* If a event fails, it will be retried a specified number of times.
-* Schedule event to happen in the future.
-* Control concurrency within and across processes
+wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 虽然可以涵盖部分 background job 的范畴, 
+但其核心为尽可能的利用 RabbitMQ 本身的特性用于处理 JSON 格式的 Message 消息. 代码 fork 自 [gocraft/work](https://github.com/gocraft/work),
+其设计与 Ruby 环境的 [Hutch](https://github.com/gocardless/hutch) 与 [Hutch-schedule](https://github.com/wppurking/hutch-schedule) 进行合作沟通.
 
 ## Tips
 ### 后端任务需要的功能
@@ -25,13 +18,12 @@ wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 
 
 ### Event 的涵盖的功能
 1. 通过 RabbitMQ 以及纯粹自定义的 JSON Format message, 进行分布式任务处理
-2. 可以设置延迟的 event 消息处理, 由 RabbitMQ 负责.
+2. 可以设置延迟的 event 消息处理, 由 RabbitMQ 负责(fixed delay level)
 3. 可以进行总并发量控制, 同时可以在总并发量之下, 控制单个 Consumer 的并发
-4. Event 消息处理失败后重试. RabbitMQ 负责信息记录.
+4. Event 消息处理失败后重试. RabbitMQ 负责信息记录
 5. Event 消息失败过多后进入 Dead 队列. (非 RabbitMQ 的 DLX, 仅仅是 Dead 队列)
 6. 利用 RabbitMQ 的 UI 面板查看任务处理情况以及速度
-7. 利用 RabbitMQ 的特性实现不同 Event 的优先级. (暂未实现)
-8. 默认与 [hutch](https://github.com/gocardless/hutch) 兼容, 可无区别消费 Event
+7. 默认与 [Hutch-schedule](https://github.com/wppurking/hutch-schedule) 兼容, 做到 Ruby/Golang 两端消息可相互传递消息各自执行
 
 ### 现在的开源的后端任务项目介绍
 下面列举了不同的后端任务/消息处理的框架, 可以根据需要进行选择
@@ -44,8 +36,6 @@ wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 
 | [gocelery](https://github.com/gocelery/gocelery) | redis, rabbitmq | golang 运行, 兼容 Celery 消息格式 |
 | [hutch](https://github.com/gocardless/hutch) | rabbitmq | ruby 运行, *纯粹 json 消息格式* |
 | [wppurking/event](https://github.com/wppurking/event) | rabbitmq | golang 运行, *纯粹 json 消息格式* |
-
-
 
 
 ## Enqueue new jobs
@@ -62,17 +52,14 @@ Just like in [gocraft/web](https://www.github.com/gocraft/web), gocraft/work let
 
 Custom contexts aren't really needed for trivial example applications, but are very important for production apps. For instance, one field in your context can be your tagged logger. Your tagged logger augments your log statements with a job-id. This lets you filter your logs by that job-id.
 
-### Check-ins
-无内容
-
 ### Scheduled Jobs
 
 You can schedule jobs to be executed in the future. To do so, make a new ```Enqueuer``` and call its ```EnqueueIn``` method:
 
 ```go
-enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
+publisher := event.NewPublisher("my_app_namespace", cony.URL(*rabbitMqURL))
 secondsInTheFuture := 300
-_, err := enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "test@example.com"})
+_, err := publisher.PublishIn("app.prod.send_welcome_email", secondsInTheFuture, event.Q{"address": "test@example.com"})
 ```
 
 ### Unique Jobs
@@ -80,24 +67,12 @@ _, err := enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"a
 1. 如果需要消息唯一, 请在用户端进行处理. 例如将状态记录在 DB.
 2. 将 event 的消息处理设计成为等幂处理, 多次执行得到同样的结果.
 
-### Periodic Enqueueing (Cron)
-当前设计为 Event 的消息处理框架, 而不是后端任务, 所以取消 cron 任务注册
-
 ## Design and concepts
 
 ### Enqueueing jobs
 
 * When jobs are enqueued, they're serialized with JSON and added to a simple Redis list with LPUSH.
 * Jobs are added to a list with the same name as the job. Each job name gets its own queue. Whereas with other job systems you have to design which jobs go on which queues, there's no need for that here.
-
-### Scheduling algorithm
-
-* Each job lives in a list-based queue with the same name as the job.
-* Each of these queues can have an associated priority. The priority is a number from 1 to 100000.
-* Each time a worker pulls a job, it needs to choose a queue. It chooses a queue probabilistically based on its relative priority.
-* If the sum of priorities among all queues is 1000, and one queue has priority 100, jobs will be pulled from that queue 10% of the time.
-* Obviously if a queue is empty, it won't be considered.
-* The semantics of "always process X jobs before Y jobs" can be accurately approximated by giving X a large number (like 10000) and Y a small number (like 1).
 
 ### Processing a job
 
@@ -125,44 +100,20 @@ _, err := enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"a
 
 ### Dead jobs
 
-* After a job has failed a specified number of times, it will be added to the dead job queue.
-* The dead job queue is just a Redis z-set. The score is the timestamp it failed and the value is the job.
-* To retry failed jobs, use the UI or the Client API.
+* 当 Message 被重新尝试超过一定数量后, 将会被投递到 Dead Queue 中
+* Dead Queue 是 RabbitMQ 中一个有限长度的 Queue 以及有 TTL 长的 Queue, 两种任意一个到达都将会清理 Dead Queue
+* 想查看或者重新投递, 通过 RabbitMQ 的 management UI
 
-### The reaper
+## Consumer 级别的并发控制
 
-* If a process crashes hard (eg, the power on the server turns off or the kernal freezes), some jobs may be in progress and we won't want to lose them. They're safe in their in-progress queue.
-* The reaper will look for worker pools without a heartbeat. It will scan their in-progress queues and requeue anything it finds.
-
-## Job concurrency
-
-* You can control job concurrency using `JobOptions{MaxConcurrency: <num>}`.
-* Unlike the WorkerPool concurrency, this controls the limit on the number jobs of that type that can be active at one time by within a single redis instance
-* This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit
-* A redis key (see `redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type
-* The default value is `0`, which means "no limit on job concurrency"
-* **Note:** if you want to run jobs "single threaded" then you can set the `MaxConcurrency` accordingly:
+* 你可以通过 `ConsumerOptions{MaxConcurrency: <num>}` 来控制并发, 同时也注意 RabbitMQ 中的 `Prefetch`
+* 与 WorkerPool 的并发量不同, 这个用于并发在单个 redis 实例中, 有多少个 gorouting 可以同时运行(最多不超过 WorkerPool 的总量)
+* 用于控制任务并发的参数记录在为每一个 Consumer 对应的 `consumerType.run` 上
+* 默认的控制并发为 `0`, 意味着 `当前 consume 没有限制`
+* **注意** 如果你想设置 consumer 为 "单线程" 那么你可以设置 `MaxConcurrency` 如下:
 ```go
-      worker_pool.JobWithOptions(jobName, JobOptions{MaxConcurrency: 1}, (*Context).WorkFxn)
+      worker_pool.ConsumerWithOptions(routingKey, ConsumerOptions{Prefetch: 30, MaxConcurrency: 5}, (*Context).WorkFxn)
 ```
-
-### Terminology reference
-* "worker pool" - a pool of workers
-* "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
-* "heartbeater" or "worker pool heartbeater" - goroutine owned by worker pool that runs concurrently with workers. Writes the worker pool's config/status (aka "heartbeat") every 5 seconds.
-* "heartbeat" - the status written by the heartbeater.
-* "observer" or "worker observer" - observes a worker. Writes stats. makes "observations".
-* "worker observation" - A snapshot made by an observer of what a worker is working on.
-* "periodic enqueuer" - A process that runs with a worker pool that periodically enqueues new jobs based on cron schedules.
-* "job" - the actual bundle of data that constitutes one job
-* "job name" - each job has a name, like "create_watch"
-* "job type" - backend/private nomenclature for the handler+options for processing a job
-* "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
-* "retry jobs" - if a job fails and needs to be retried, it will be put on this queue.
-* "scheduled jobs" - jobs enqueued to be run in th future will be put on a scheduled job queue.
-* "dead jobs" - if a job exceeds its MaxFails count, it will be put on the dead job queue.
-* "paused jobs" - if paused key is present for a queue, then no jobs from that queue will be processed by any workers until that queue's paused key is removed
-* "job concurrency" - the number of jobs being actively processed  of a particular type across worker pool processes but within a single redis instance
 
 ## Benchmarks
 
@@ -170,22 +121,11 @@ The benches folder contains various benchmark code. In each case, we enqueue 100
 
 | Library | Speed |
 | --- | --- |
-| [gocraft/work](https://www.github.com/gocraft/work) | **20944 jobs/s** |
+| [gocraft/work](https://www.github.com/gocraft/work)/[wppurking/event](https://github.com/wppurking/event) | **20944 jobs/s** |
 | [jrallison/go-workers](https://www.github.com/jrallison/go-workers) | 19945 jobs/s |
 | [benmanns/goworker](https://www.github.com/benmanns/goworker) | 10328.5 jobs/s |
 | [albrow/jobs](https://www.github.com/albrow/jobs) | 40 jobs/s |
 
-
-## gocraft
-
-gocraft offers a toolkit for building web apps. Currently these packages are available:
-
-* [gocraft/web](https://github.com/gocraft/web) - Go Router + Middleware. Your Contexts.
-* [gocraft/dbr](https://github.com/gocraft/dbr) - Additions to Go's database/sql for super fast performance and convenience.
-* [gocraft/health](https://github.com/gocraft/health) - Instrument your web apps with logging and metrics.
-* [gocraft/work](https://github.com/gocraft/work) - Process background jobs in Go.
-
-These packages were developed by the [engineering team](https://eng.uservoice.com) at [UserVoice](https://www.uservoice.com) and currently power much of its infrastructure and tech stack.
 
 ## Authors
 
