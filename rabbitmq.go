@@ -2,36 +2,49 @@ package event
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/assembla/cony"
 	"github.com/streadway/amqp"
 )
 
 const (
-	// TODO: retryQueue 与 deadQueue 都需要与 hutch, hutch-schedule 命名同规则, 这样才可以整合使用
+	// TODO: delayQueue 与 deadQueue 都需要与 hutch, hutch-schedule 命名同规则, 这样才可以整合使用
 	deadQueue    = "dead_queue"
-	retryQueue   = "schedule_queue"
+	delayQueue   = "delay_queue"
 	exchangeName = "hutch"
+
+	//# fixed delay levels
+	//# seconds(4): 5s, 10s, 20s, 30s
+	//# minutes(14): 1m, 2m, 3m, 4m, 5m, 6m, 7m, 8m, 9m, 10m, 20m, 30m, 40m, 50m
+	//# hours(3): 1h, 2h, 3h
+)
+
+var (
+	// 拥有的 delayQueues
+	delayQueues = []string{
+		"5s", "10s", "20s", "30s",
+		"60s", "120s", "180s", "240s", "300s", "360s", "420s", "480s", "540s", "600s", "1200s", "1800s", "2400s", "3000s",
+		"3600s", "7200s", "10800s",
+	}
+	// 30 * 24 * 3600  * 1000
+	oneMonth = int64(2592000000)
 )
 
 // 构建 buildin 重试/retry 的队列
-func buildinQueueName(exName, sufix string) string {
-	return fmt.Sprintf("%s_%s", exName, sufix)
+func buildinQueueName(names ...string) string {
+	return strings.Join(names, "_")
 }
 
 // 构建内置的 retry 与 dead queue
-func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.Client) {
-	// 30 * 24 * 3600  * 1000
-	oneMonth := int64(2592000000)
+// TODO: 内建的 retry queue 需要改造成为与 hutch-schedule 一样的 fixed delay level queue
+func builtinQueue(ns string, exc cony.Exchange, delayExc cony.Exchange, cli *cony.Client) {
+	var declears []cony.Declaration
 
-	// retry queue: 不需要 consumer, 由 rabbitmq 的 ddl 自行处理
+	// delay queue_<5s>: 不需要 consumer, 由 rabbitmq 的 ddl 自行处理
 	// - 最长超过 30 天重新投递
 	// - 重新投递到默认的 exchange
-	retryQue := buildConyQueue(
-		buildinQueueName(exc.Name, retryQueue),
-		amqp.Table{"x-message-ttl": oneMonth, "x-dead-letter-exchange": exc.Name},
-	)
-	retryBnd := cony.Binding{Queue: retryQue, Exchange: schExc, Key: "#"}
+	qus, binds := builtinDelayQueues(exc, delayExc)
 
 	// dead queue: 不需要 consumer, 由 rabbitmq 自行过期处理
 	// - 消息超过 30 天放弃
@@ -42,12 +55,35 @@ func builtinQueue(ns string, exc cony.Exchange, schExc cony.Exchange, cli *cony.
 	)
 	deadBnd := cony.Binding{Queue: deadQue, Exchange: exc, Key: deadQueue + ".#"}
 
-	cli.Declare([]cony.Declaration{
-		cony.DeclareQueue(deadQue),
-		cony.DeclareQueue(retryQue),
-		cony.DeclareBinding(retryBnd),
-		cony.DeclareBinding(deadBnd),
-	})
+	qus = append(qus, deadQue)
+	binds = append(binds, deadBnd)
+	for _, q := range qus {
+		declears = append(declears, cony.DeclareQueue(q))
+	}
+	for _, b := range binds {
+		declears = append(declears, cony.DeclareBinding(b))
+	}
+
+	cli.Declare(declears)
+}
+
+func builtinDelayQueues(exc cony.Exchange, delayExc cony.Exchange) ([]*cony.Queue, []cony.Binding) {
+	var ques []*cony.Queue
+	var binds []cony.Binding
+	for _, q := range delayQueues {
+		retryQue := buildConyQueue(
+			// <hutch>_delay_queue_<5s>
+			buildinQueueName(exc.Name, delayQueue, q),
+			amqp.Table{"x-message-ttl": oneMonth, "x-dead-letter-exchange": exc.Name},
+		)
+		ques = append(ques, retryQue)
+		binds = append(binds, cony.Binding{
+			Queue:    retryQue,
+			Exchange: delayExc,
+			Key:      fmt.Sprintf("%s.schedule.%s", exc.Name, q), // <hutch>.schedule.<5s>
+		})
+	}
+	return ques, binds
 }
 
 // 构建一个默认的持久化的 queue
