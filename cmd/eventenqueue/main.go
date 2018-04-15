@@ -5,20 +5,21 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/assembla/cony"
-	"github.com/wppurking/work"
+	"github.com/wppurking/event"
 )
 
-var rabbitMqURL = flag.String("amqp", "amqp://guest:guest@localhost:5672/", "amqp url")
+var rabbitMqURL = flag.String("amqp", "amqp://guest:guest@localhost:5672/event", "amqp url")
 var namespace = flag.String("ns", "work", "namespace")
-var jobName = flag.String("job", "", "job name")
+var routingKey = flag.String("rk", "", "job name")
 var jobArgs = flag.String("args", "{}", "job arguments")
 
 func main() {
 	flag.Parse()
 
-	if *jobName == "" {
+	if *routingKey == "" {
 		fmt.Println("no job specified")
 		os.Exit(1)
 	}
@@ -30,6 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	en := work.NewPublisher(*namespace, cony.URL(*rabbitMqURL))
-	en.Publish(*jobName, args)
+	en := event.NewPublisher(*namespace, cony.URL(*rabbitMqURL))
+	en.Publish(*routingKey, args)
+	time.Sleep(100 * time.Millisecond)
 }
