@@ -42,6 +42,8 @@ func main() {
 	wp.Start()
 
 	select {}
+	// may not execute here
+	wp.Stop()
 }
 
 func enqueues(en *event.Publisher) {

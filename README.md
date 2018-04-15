@@ -38,11 +38,8 @@ wppurking/event 被设计为针对后端 RabbitMQ 的 Event 消息处理框架. 
 | [wppurking/event](https://github.com/wppurking/event) | rabbitmq | golang 运行, *纯粹 json 消息格式* |
 
 
-## Enqueue new jobs
-TBD
-
-## Process jobs
-TBD
+### 如何使用
+具体使用的例子可以参考 [eventfakedata 例子](https://github.com/wppurking/event/blob/master/cmd/eventfakedata/main.go)
 
 ## Special Features
 
