@@ -15,7 +15,7 @@ import (
 type WorkerPool struct {
 	workerPoolID string        // 当前 workerPool 的 ID
 	concurrency  uint          // 拥有的 workers 的总并发数量
-	namespace    string        // eg, "myapp-work"
+	namespace    string        // eg, "myapp-work", 用于区分在统一系统中, 不同的 queue 名称
 	exchangeName string        // exchange 的名称
 	cli          *cony.Client  // cony 的客户端, 用于保持连接
 	defaultExc   cony.Exchange // 默认发送消息的 exchange
