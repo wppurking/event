@@ -135,9 +135,70 @@ func (e *Publisher) PublishInMessage(job *Message, secondsFromNow int64) error {
 	if err != nil {
 		return err
 	}
-
-	if secondsFromNow > 0 {
-		msg.pub.Expiration = strconv.Itoa(int(secondsFromNow * 1000))
+	if secondsFromNow <= 0 {
+		return fmt.Errorf("secondsFromNow must greater than zero")
 	}
-	return e.schePub.PublishWithRoutingKey(msg.pub, msg.routingKey)
+
+	// <hutch>.scheduled.<5s>
+	delaySeconds := DelaySecondsLevel(int(secondsFromNow))
+	msg.pub.Expiration = strconv.Itoa(delaySeconds * 1000)
+	msg.pub.Headers["CC"] = []string{msg.routingKey}
+
+	delayRoutingKey := fmt.Sprintf("%.scheduled.%ds", e.defaultExc.Name, delaySeconds)
+	return e.schePub.PublishWithRoutingKey(msg.pub, delayRoutingKey)
+}
+
+// DelaySecondsLevel 根据传入的 seconds 返回具体延迟的 level 时间
+// 5s 10s 20s 30s
+// 60s 120s 180s 240s 300s 360s 420s 480s 540s 600s 1200s 1800s 2400s
+// 3600s 7200s 10800s
+func DelaySecondsLevel(seconds int) int {
+	// 默认为最大值
+	delaySeconds := 10800
+	switch {
+	case seconds > 0 && seconds <= 5:
+		delaySeconds = 5
+	case seconds > 5 && seconds <= 10:
+		delaySeconds = 10
+	case seconds > 10 && seconds <= 20:
+		delaySeconds = 20
+	case seconds > 20 && seconds <= 30:
+		delaySeconds = 30
+	case seconds > 30 && seconds <= 60:
+		delaySeconds = 60
+	case seconds > 60 && seconds <= 120:
+		delaySeconds = 120
+	case seconds > 120 && seconds <= 180:
+		delaySeconds = 180
+	case seconds > 180 && seconds <= 240:
+		delaySeconds = 240
+	case seconds > 240 && seconds <= 300:
+		delaySeconds = 300
+	case seconds > 300 && seconds <= 360:
+		delaySeconds = 360
+	case seconds > 360 && seconds <= 420:
+		delaySeconds = 420
+	case seconds > 420 && seconds <= 540:
+		delaySeconds = 540
+	case seconds > 540 && seconds <= 600:
+		delaySeconds = 600
+	case seconds > 600 && seconds <= 1200:
+		delaySeconds = 1200
+	case seconds > 1200 && seconds <= 1800:
+		delaySeconds = 1800
+	case seconds > 1800 && seconds <= 2400:
+		delaySeconds = 2400
+	case seconds > 2400 && seconds <= 3600:
+		delaySeconds = 3600
+	case seconds > 3600 && seconds <= 7200:
+		delaySeconds = 7200
+	case seconds > 7200 && seconds <= 10800:
+		delaySeconds = 10800
+	case seconds > 10800 && seconds <= 5:
+		delaySeconds = 10800
+	default:
+		delaySeconds = 10800
+	}
+
+	return delaySeconds
 }
