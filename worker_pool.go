@@ -71,7 +71,7 @@ func NewWorkerPoolWithExchangeName(ctx interface{}, concurrency uint, namespace,
 	wp.cli = cony.NewClient(wp.opts...)
 	wp.defaultExc = buildTopicExchange(wp.exchangeName)
 	wp.scheduleExc = buildScheduleExchange(wp.exchangeName)
-	builtinQueue(wp.namespace, wp.defaultExc, wp.scheduleExc, wp.cli)
+	builtinQueue(wp.defaultExc, wp.scheduleExc, wp.cli)
 
 	for i := uint(0); i < wp.concurrency; i++ {
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.contextType,

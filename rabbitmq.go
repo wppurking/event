@@ -37,8 +37,7 @@ func buildinQueueName(names ...string) string {
 }
 
 // 构建内置的 retry 与 dead queue
-// TODO: 内建的 retry queue 需要改造成为与 hutch-schedule 一样的 fixed delay level queue
-func builtinQueue(ns string, exc cony.Exchange, delayExc cony.Exchange, cli *cony.Client) {
+func builtinQueue(exc cony.Exchange, delayExc cony.Exchange, cli *cony.Client) {
 	var declears []cony.Declaration
 
 	// delay queue_<5s>: 不需要 consumer, 由 rabbitmq 的 ddl 自行处理
