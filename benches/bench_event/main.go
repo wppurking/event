@@ -28,8 +28,8 @@ func main() {
 	stream := health.NewStream().AddSink(&health.WriterSink{os.Stdout})
 
 	numJobs := 10
-	jobNames := []string{}
-	rabbitMqURL := "amqp://guest:guest@localhost:5672/ajd"
+	var jobNames []string
+	rabbitMqURL := "amqp://guest:guest@localhost:5672/event"
 	enq = event.NewPublisher(namespace, cony.URL(rabbitMqURL))
 
 	for i := 0; i < numJobs; i++ {
