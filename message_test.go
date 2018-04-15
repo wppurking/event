@@ -45,7 +45,7 @@ func TestXdeathHeader(t *testing.T) {
 		"original-expiration": "35000",
 		"queue":               "work._retry",
 		"reason":              "expired",
-		"routing-keys":        []interface{}{"foobar"},
+		"routing-keys":        []interface{}{"hutch.schedule.30s", "foobar"},
 		"time":                time.Unix(1515465328, 0),
 	}
 
@@ -55,7 +55,7 @@ func TestXdeathHeader(t *testing.T) {
 		"original-expiration": "35000",
 		"queue":               "work._retry",
 		"reason":              "expired",
-		"routing-keys":        []interface{}{"foobar"},
+		"routing-keys":        []interface{}{"hutch.schedule.30s", "foobar"},
 		"time":                time.Unix(1515465328, 0),
 	}
 	tb3 := amqp.Table{
@@ -64,7 +64,7 @@ func TestXdeathHeader(t *testing.T) {
 		"original-expiration": "35000",
 		"queue":               "work._retry",
 		"reason":              "expired",
-		"routing-keys":        []interface{}{"abc"},
+		"routing-keys":        []interface{}{"hutch.schedule.30s", "abc"},
 		"time":                time.Unix(1515465328, 0),
 	}
 
