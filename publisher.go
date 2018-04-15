@@ -142,9 +142,12 @@ func (e *Publisher) PublishInMessage(job *Message, secondsFromNow int64) error {
 	// <hutch>.scheduled.<5s>
 	delaySeconds := DelaySecondsLevel(int(secondsFromNow))
 	msg.pub.Expiration = strconv.Itoa(delaySeconds * 1000)
-	msg.pub.Headers["CC"] = []string{msg.routingKey}
+	if msg.pub.Headers == nil {
+		msg.pub.Headers = amqp.Table{}
+	}
+	msg.pub.Headers["CC"] = []interface{}{msg.routingKey}
 
-	delayRoutingKey := fmt.Sprintf("%.scheduled.%ds", e.defaultExc.Name, delaySeconds)
+	delayRoutingKey := fmt.Sprintf("%s.schedule.%ds", e.defaultExc.Name, delaySeconds)
 	return e.schePub.PublishWithRoutingKey(msg.pub, delayRoutingKey)
 }
 

@@ -111,6 +111,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 // fn can take one of these forms:
 // (*ContextType).func(*Message) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Message) error, for the generic handler format.
+// 使用 routing-key 作为 consumerType 的 key
 func (wp *WorkerPool) Consumer(name string, fn interface{}) *WorkerPool {
 	return wp.ConsumerWithOptions(name, ConsumerOptions{}, fn)
 }
