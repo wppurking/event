@@ -37,7 +37,7 @@ func main() {
 	go enqueues(enq)
 
 	wp := event.NewWorkerPool(context{}, 30, *namespace, enq, cony.URL(*rabbitMqURL))
-	opts := event.ConsumerOptions{MaxFails: 3, Prefetch: 30, MaxConcurrency: 5}
+	opts := event.ConsumerOptions{MaxFails: 3, Prefetch: 30, MaxConcurrency: 5, QueueName: "event_queue"}
 	wp.ConsumerWithOptions(routingKey, opts, (*context).epsilonHandler)
 	wp.Start()
 
